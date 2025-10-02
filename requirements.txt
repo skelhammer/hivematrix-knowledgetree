@@ -1,0 +1,9 @@
+Flask==2.3.3
+python-dotenv==1.0.0
+PyJWT==2.8.0
+cryptography>=3.4.7
+requests==2.31.0
+neo4j==5.14.0
+markdown==3.5.1
+markdownify==0.11.6
+waitress==2.1.2

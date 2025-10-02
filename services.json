@@ -1,0 +1,11 @@
+{
+    "template": {
+        "url": "http://localhost:5001"
+    },
+    "codex": {
+        "url": "http://localhost:5010"
+    },
+    "knowledgetree": {
+        "url": "http://localhost:5020"
+    }
+}

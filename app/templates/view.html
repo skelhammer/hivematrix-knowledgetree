@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>View Item - KnowledgeTree</title>
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+</head>
+<body>
+    <div class="card">
+        <div class="card__header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <a href="{{ url_for('browse', path=parent_path) }}">
+                    <button class="btn">
+                        <span class="btn__label">← Back</span>
+                    </button>
+                </a>
+                <h1 class="card__title" id="node-name" style="margin: 0;">Loading...</h1>
+                <button id="export-context-btn" class="btn btn--primary">
+                    <span class="btn__label">Export Context</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">Content</h2>
+        </div>
+        <div class="card__body">
+            <div id="content-display"></div>
+
+            <div id="editor-container" style="margin-top: 2rem;">
+                <h3>Edit Content</h3>
+                <div id="editor"></div>
+                <button id="save-btn" class="btn btn--primary" style="margin-top: 1rem;">
+                    <span class="btn__label">Save Content</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">Attachments</h2>
+        </div>
+        <div class="card__body">
+            <div id="file-list"></div>
+            <div style="margin-top: 1rem;">
+                <input type="file" id="file-upload-input">
+                <button id="upload-btn" class="btn">
+                    <span class="btn__label">Upload File</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Export Modal -->
+    <div id="context-modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); padding-top: 60px;">
+        <div style="background-color: white; margin: 5% auto; padding: 2rem; border: 1px solid #dee2e6; width: 80%; max-width: 800px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative;">
+            <span id="close-modal-btn" style="color: #6c757d; position: absolute; top: 1rem; right: 1.5rem; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h2>Export Context</h2>
+            <p id="modal-message">Select the items to include in the exported context.</p>
+            <div id="context-tree-container"></div>
+            <textarea id="context-textarea" readonly style="display: none; width: 100%; height: 400px; font-family: monospace; border: 1px solid #dee2e6; border-radius: 4px; padding: 0.5rem; resize: vertical;"></textarea>
+            <button id="generate-context-btn" class="btn btn--primary">
+                <span class="btn__label">Generate & Copy Context</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+    <script>
+        const NODE_ID = "{{ node_id }}";
+        let editor = null;
+
+        async function loadNodeData() {
+            try {
+                const response = await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`);
+                if (!response.ok) {
+                    document.body.innerHTML = '<div class="card"><div class="card__body"><h1>Error: Not Found</h1><p>The requested item could not be found.</p></div></div>';
+                    return;
+                }
+                const data = await response.json();
+
+                document.getElementById('node-name').textContent = data.name;
+                document.title = data.name;
+                document.getElementById('content-display').innerHTML = data.content_html || '<p>No content yet. Edit to add some.</p>';
+
+                // File list
+                const fileList = document.getElementById('file-list');
+                fileList.innerHTML = '';
+                if (data.files && data.files.length > 0) {
+                    const ul = document.createElement('ul');
+                    data.files.forEach(file => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.href = `{{ url_for('uploaded_file', filename='') }}${file.filename}`;
+                        a.textContent = file.filename;
+                        a.target = '_blank';
+                        li.appendChild(a);
+                        ul.appendChild(li);
+                    });
+                    fileList.appendChild(ul);
+                } else {
+                    fileList.innerHTML = '<p>No files attached.</p>';
+                }
+
+                // Editor (hide if read-only)
+                const editorContainer = document.getElementById('editor-container');
+                if (data.read_only) {
+                    editorContainer.style.display = 'none';
+                } else {
+                    editorContainer.style.display = 'block';
+                    editor = new toastui.Editor({
+                        el: document.querySelector('#editor'),
+                        height: '600px',
+                        initialEditType: 'wysiwyg',
+                        previewStyle: 'tab',
+                        usageStatistics: false,
+                        initialValue: data.content || ''
+                    });
+
+                    document.getElementById('save-btn').addEventListener('click', async () => {
+                        await fetch(`{{ url_for('update_node', node_id='') }}${NODE_ID}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: editor.getMarkdown() })
+                        });
+                        alert('Content saved!');
+                        const updatedData = await (await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`)).json();
+                        document.getElementById('content-display').innerHTML = updatedData.content_html;
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to load node data:", error);
+                document.getElementById('node-name').textContent = "Error loading content.";
+            }
+        }
+
+        // Context export
+        document.getElementById('export-context-btn').addEventListener('click', async () => {
+            const contextModal = document.getElementById('context-modal');
+            const treeContainer = document.getElementById('context-tree-container');
+            const contextTextarea = document.getElementById('context-textarea');
+            const generateBtn = document.getElementById('generate-context-btn');
+
+            treeContainer.innerHTML = 'Loading...';
+            contextTextarea.style.display = 'none';
+            treeContainer.style.display = 'block';
+            generateBtn.style.display = 'block';
+            contextModal.style.display = 'block';
+
+            const response = await fetch(`{{ url_for('get_context_tree', node_id='') }}${NODE_ID}`);
+            const data = await response.json();
+
+            treeContainer.innerHTML = '';
+            if (data.attached_folders.length === 0) {
+                treeContainer.innerHTML = '<p>No attached folders in this context.</p>';
+            } else {
+                const ul = document.createElement('ul');
+                ul.style.listStyle = 'none';
+                ul.style.padding = '0';
+
+                data.attached_folders.forEach(folder => {
+                    const li = document.createElement('li');
+                    li.style.padding = '0.5rem 0';
+
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.gap = '8px';
+                    label.style.cursor = 'pointer';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.id = folder.id;
+
+                    label.appendChild(checkbox);
+                    label.innerHTML += `📎 ${folder.name}`;
+                    li.appendChild(label);
+                    ul.appendChild(li);
+                });
+
+                treeContainer.appendChild(ul);
+            }
+        });
+
+        document.getElementById('generate-context-btn').addEventListener('click', async () => {
+            const treeContainer = document.getElementById('context-tree-container');
+            const contextTextarea = document.getElementById('context-textarea');
+            const modalMessage = document.getElementById('modal-message');
+            const generateBtn = document.getElementById('generate-context-btn');
+
+            const excludedIds = Array.from(treeContainer.querySelectorAll('input[type="checkbox"]:not(:checked)'))
+                                     .map(cb => cb.dataset.id);
+
+            const response = await fetch(`{{ url_for('get_context', node_id='') }}${NODE_ID}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ excluded_ids: excludedIds })
+            });
+            const data = await response.json();
+
+            treeContainer.style.display = 'none';
+            generateBtn.style.display = 'none';
+            contextTextarea.style.display = 'block';
+
+            contextTextarea.value = data.context;
+            contextTextarea.focus();
+            contextTextarea.select();
+
+            modalMessage.textContent = 'Auto-copied to clipboard! You can also copy the text below.';
+
+            if (navigator.clipboard) {
+                try {
+                    await navigator.clipboard.writeText(data.context);
+                } catch (err) {
+                    console.error('Failed to auto-copy to clipboard:', err);
+                    modalMessage.textContent = 'Could not auto-copy. Please copy the text manually.';
+                }
+            }
+        });
+
+        // Modal closing
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            document.getElementById('context-modal').style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('context-modal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        });
+
+        // File upload
+        document.getElementById('upload-btn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('file-upload-input');
+            if (!fileInput || fileInput.files.length === 0) {
+                alert('Please select a file to upload.');
+                return;
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const response = await fetch(`{{ url_for('upload_file_to_node', node_id='') }}${NODE_ID}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                alert('File uploaded successfully!');
+                fileInput.value = '';
+                loadNodeData();
+            } else {
+                alert('File upload failed.');
+            }
+        });
+
+        loadNodeData();
+    </script>
+</body>
+</html>
