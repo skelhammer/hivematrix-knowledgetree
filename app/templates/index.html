@@ -7,7 +7,16 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <h1 class="card__title">KnowledgeTree</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 class="card__title">KnowledgeTree</h1>
+                {% if user.permission_level == 'admin' %}
+                <a href="{{ url_for('admin_settings') }}">
+                    <button class="btn">
+                        <span class="btn__label">⚙️ Admin Settings</span>
+                    </button>
+                </a>
+                {% endif %}
+            </div>
         </div>
         <div class="card__body">
             <p>Welcome, <strong>{{ user.name }}</strong> ({{ user.permission_level }})</p>

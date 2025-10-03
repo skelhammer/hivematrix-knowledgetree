@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Settings - KnowledgeTree</title>
+</head>
+<body>
+    <div class="card">
+        <div class="card__header">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 class="card__title">KnowledgeTree Admin Settings</h1>
+                <a href="{{ url_for('browse', path='') }}">
+                    <button class="btn">
+                        <span class="btn__label">← Back to Tree</span>
+                    </button>
+                </a>
+            </div>
+        </div>
+        <div class="card__body">
+            <p>Welcome, <strong>{{ user.name }}</strong> ({{ user.permission_level }})</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">Current Configuration</h2>
+        </div>
+        <div class="card__body">
+            <table>
+                <tbody>
+                    <tr>
+                        <td><strong>Neo4j URI:</strong></td>
+                        <td>{{ settings.neo4j_uri }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Codex Service:</strong></td>
+                        <td>{{ settings.codex_url }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Freshservice Domain:</strong></td>
+                        <td>{{ settings.freshservice_domain }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Freshservice Status:</strong></td>
+                        <td>
+                            {% if settings.freshservice_configured %}
+                                <span style="color: green;">✓ Configured</span>
+                            {% else %}
+                                <span style="color: gray;">Not configured</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">Sync Status</h2>
+        </div>
+        <div class="card__body">
+            <div id="sync-status">Loading...</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">Data Synchronization</h2>
+        </div>
+        <div class="card__body">
+            <h3>Codex Sync</h3>
+            <p>Synchronize company structure, users, and assets from Codex.</p>
+            <button id="sync-codex-btn" class="btn btn--primary">
+                <span class="btn__label">Sync from Codex</span>
+            </button>
+            <div id="codex-sync-output" style="margin-top: 1rem; display: none;">
+                <h4>Sync Output:</h4>
+                <pre style="background: #f4f7f9; padding: 1rem; border-radius: 4px; overflow-x: auto; max-height: 400px;"></pre>
+            </div>
+
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+
+            {% if settings.freshservice_configured %}
+            <h3>Freshservice Ticket Sync</h3>
+            <p>Synchronize support tickets from Freshservice.</p>
+            <div style="display: flex; gap: 1rem;">
+                <button id="sync-tickets-btn" class="btn btn--primary">
+                    <span class="btn__label">Sync New Tickets</span>
+                </button>
+                <button id="sync-tickets-overwrite-btn" class="btn">
+                    <span class="btn__label">Full Refresh (Overwrite)</span>
+                </button>
+            </div>
+            <div id="tickets-sync-output" style="margin-top: 1rem; display: none;">
+                <h4>Sync Output:</h4>
+                <pre style="background: #f4f7f9; padding: 1rem; border-radius: 4px; overflow-x: auto; max-height: 400px;"></pre>
+            </div>
+            {% else %}
+            <h3>Freshservice Ticket Sync</h3>
+            <p style="color: gray;">Freshservice is not configured. Run <code>python init_db.py</code> to configure ticket syncing.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
+            <h2 class="card__title">Dangerous Actions</h2>
+        </div>
+        <div class="card__body">
+            <p style="color: #e74c3c;"><strong>Warning:</strong> This will delete all data in the KnowledgeTree database.</p>
+            <button id="wipe-db-btn" class="btn btn--danger">
+                <span class="btn__label">Wipe Database</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Load sync status
+        async function loadSyncStatus() {
+            try {
+                const response = await fetch('{{ url_for("admin_sync_status") }}');
+                const data = await response.json();
+                document.getElementById('sync-status').innerHTML = `
+                    <table>
+                        <tbody>
+                            <tr>
+                                <td><strong>Synced Company Items:</strong></td>
+                                <td>${data.company_items}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Synced Tickets:</strong></td>
+                                <td>${data.ticket_count}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+            } catch (error) {
+                document.getElementById('sync-status').innerHTML = '<p style="color: red;">Failed to load sync status</p>';
+            }
+        }
+
+        // Codex sync
+        document.getElementById('sync-codex-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('sync-codex-btn');
+            const output = document.getElementById('codex-sync-output');
+            const pre = output.querySelector('pre');
+
+            btn.disabled = true;
+            btn.querySelector('.btn__label').textContent = 'Syncing...';
+            output.style.display = 'block';
+            pre.textContent = 'Starting Codex sync...\n';
+
+            try {
+                const response = await fetch('{{ url_for("admin_sync_codex") }}', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    pre.textContent = data.output || 'Sync completed successfully!';
+                    alert('Codex sync completed successfully!');
+                    loadSyncStatus();
+                } else {
+                    pre.textContent = data.error || data.message;
+                    alert('Codex sync failed. Check output for details.');
+                }
+            } catch (error) {
+                pre.textContent = `Error: ${error.message}`;
+                alert('Failed to run Codex sync');
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('.btn__label').textContent = 'Sync from Codex';
+            }
+        });
+
+        // Ticket sync (incremental)
+        document.getElementById('sync-tickets-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('sync-tickets-btn');
+            const output = document.getElementById('tickets-sync-output');
+            const pre = output.querySelector('pre');
+
+            btn.disabled = true;
+            btn.querySelector('.btn__label').textContent = 'Syncing...';
+            output.style.display = 'block';
+            pre.textContent = 'Starting ticket sync...\n';
+
+            try {
+                const response = await fetch('{{ url_for("admin_sync_tickets") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ overwrite: false })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    pre.textContent = data.output || 'Sync completed successfully!';
+                    alert('Ticket sync completed successfully!');
+                    loadSyncStatus();
+                } else {
+                    pre.textContent = data.error || data.message;
+                    alert('Ticket sync failed. Check output for details.');
+                }
+            } catch (error) {
+                pre.textContent = `Error: ${error.message}`;
+                alert('Failed to run ticket sync');
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('.btn__label').textContent = 'Sync New Tickets';
+            }
+        });
+
+        // Ticket sync (overwrite)
+        document.getElementById('sync-tickets-overwrite-btn')?.addEventListener('click', async () => {
+            if (!confirm('This will refresh ALL tickets. This may take a long time. Continue?')) {
+                return;
+            }
+
+            const btn = document.getElementById('sync-tickets-overwrite-btn');
+            const output = document.getElementById('tickets-sync-output');
+            const pre = output.querySelector('pre');
+
+            btn.disabled = true;
+            btn.querySelector('.btn__label').textContent = 'Syncing...';
+            output.style.display = 'block';
+            pre.textContent = 'Starting full ticket refresh...\n';
+
+            try {
+                const response = await fetch('{{ url_for("admin_sync_tickets") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ overwrite: true })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    pre.textContent = data.output || 'Sync completed successfully!';
+                    alert('Full ticket refresh completed successfully!');
+                    loadSyncStatus();
+                } else {
+                    pre.textContent = data.error || data.message;
+                    alert('Ticket sync failed. Check output for details.');
+                }
+            } catch (error) {
+                pre.textContent = `Error: ${error.message}`;
+                alert('Failed to run ticket sync');
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('.btn__label').textContent = 'Full Refresh (Overwrite)';
+            }
+        });
+
+        // Wipe database
+        document.getElementById('wipe-db-btn').addEventListener('click', async () => {
+            if (!confirm('Are you ABSOLUTELY SURE you want to wipe the entire database? This cannot be undone!')) {
+                return;
+            }
+            if (!confirm('Last chance! Type YES in the next prompt to confirm.')) {
+                return;
+            }
+            const confirmation = prompt('Type YES to confirm database wipe:');
+            if (confirmation !== 'YES') {
+                alert('Database wipe cancelled.');
+                return;
+            }
+
+            try {
+                const response = await fetch('{{ url_for("admin_wipe") }}', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Database wiped successfully!');
+                    window.location.href = '{{ url_for("browse", path="") }}';
+                } else {
+                    alert('Failed to wipe database');
+                }
+            } catch (error) {
+                alert('Error wiping database');
+            }
+        });
+
+        // Load status on page load
+        loadSyncStatus();
+    </script>
+</body>
+</html>

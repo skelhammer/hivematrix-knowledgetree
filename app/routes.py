@@ -366,3 +366,143 @@ def admin_wipe():
         """))
 
     return jsonify({'success': True, 'message': 'Database wiped and re-initialized.'})
+
+
+
+@app.route('/admin/settings')
+@admin_required
+def admin_settings():
+    """Admin settings page."""
+    if g.is_service_call:
+        return {'error': 'This endpoint is for users only'}, 403
+
+    config = current_app.config['KT_CONFIG']
+
+    # Get current configuration
+    settings = {
+        'neo4j_uri': config.get('database', 'neo4j_uri', fallback='Not configured'),
+        'codex_url': config.get('codex', 'url', fallback='Not configured'),
+        'freshservice_domain': config.get('freshservice', 'domain', fallback='Not configured'),
+        'freshservice_configured': bool(config.get('freshservice', 'domain', fallback=''))
+    }
+
+    return render_template('admin/settings.html', settings=settings, user=g.user)
+
+@app.route('/admin/sync/codex', methods=['POST'])
+@admin_required
+def admin_sync_codex():
+    """Trigger Codex sync."""
+    import subprocess
+    import sys
+
+    try:
+        # Run sync_codex.py as a subprocess
+        result = subprocess.run(
+            [sys.executable, 'sync_codex.py'],
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': 'Codex sync completed successfully',
+                'output': result.stdout
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Codex sync failed',
+                'error': result.stderr
+            }), 500
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'message': 'Sync timed out after 5 minutes'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error running sync: {str(e)}'
+        }), 500
+
+@app.route('/admin/sync/tickets', methods=['POST'])
+@admin_required
+def admin_sync_tickets():
+    """Trigger Freshservice ticket sync."""
+    import subprocess
+    import sys
+
+    config = current_app.config['KT_CONFIG']
+    if not config.get('freshservice', 'domain', fallback=''):
+        return jsonify({
+            'success': False,
+            'message': 'Freshservice is not configured'
+        }), 400
+
+    data = request.json or {}
+    overwrite = data.get('overwrite', False)
+
+    try:
+        args = [sys.executable, 'sync_tickets.py']
+        if overwrite:
+            args.append('overwrite')
+
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minute timeout
+        )
+
+        if result.returncode == 0:
+            return jsonify({
+                'success': True,
+                'message': 'Ticket sync completed successfully',
+                'output': result.stdout
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Ticket sync failed',
+                'error': result.stderr
+            }), 500
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'message': 'Sync timed out after 10 minutes'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error running sync: {str(e)}'
+        }), 500
+
+@app.route('/admin/sync/status', methods=['GET'])
+@admin_required
+def admin_sync_status():
+    """Get sync status information."""
+    driver = current_app.config['NEO4J_DRIVER']
+
+    with driver.session() as session:
+        # Count synced items
+        stats = session.run("""
+            MATCH (n:ContextItem {read_only: true})
+            WITH n.id as id
+            WHERE id STARTS WITH 'root_Companies'
+            RETURN count(id) as company_items
+        """).single()
+
+        ticket_stats = session.run("""
+            MATCH (n:ContextItem)
+            WHERE n.id STARTS WITH 'ticket_'
+            RETURN count(n) as ticket_count
+        """).single()
+
+        return jsonify({
+            'company_items': stats['company_items'] if stats else 0,
+            'ticket_count': ticket_stats['ticket_count'] if ticket_stats else 0
+        })
