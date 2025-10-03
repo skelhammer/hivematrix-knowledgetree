@@ -58,7 +58,7 @@ def test_neo4j_connection(creds):
 def get_codex_config(config):
     """Prompts for Codex service configuration."""
     print("\n--- Codex Integration Configuration ---")
-    print("KnowledgeTree will sync company structure from Codex.")
+    print("KnowledgeTree syncs all data from Codex (companies, contacts, tickets, etc.)")
 
     defaults = {
         'url': 'http://localhost:5010'
@@ -70,38 +70,6 @@ def get_codex_config(config):
     url = input(f"Codex Service URL [{defaults['url']}]: ") or defaults['url']
 
     return {'url': url}
-
-def get_freshservice_config(config):
-    """Prompts for Freshservice ticket sync configuration."""
-    print("\n--- Freshservice Ticket Sync Configuration ---")
-    print("This is optional. Leave blank to skip ticket syncing.")
-
-    defaults = {
-        'domain': '',
-        'api_key': ''
-    }
-
-    if config.has_section('freshservice'):
-        defaults['domain'] = config.get('freshservice', 'domain', fallback=defaults['domain'])
-        defaults['api_key'] = config.get('freshservice', 'api_key', fallback=defaults['api_key'])
-
-    domain = input(f"Freshservice Domain [{defaults['domain'] or 'skip'}]: ") or defaults['domain']
-
-    if domain:
-        if defaults['api_key']:
-            api_key_prompt = f"Freshservice API Key [****{defaults['api_key'][-4:]}]: "
-        else:
-            api_key_prompt = "Freshservice API Key: "
-
-        api_key_input = getpass(api_key_prompt)
-        api_key = api_key_input if api_key_input else defaults['api_key']
-    else:
-        api_key = ''
-
-    return {
-        'domain': domain,
-        'api_key': api_key
-    }
 
 def init_db():
     """Interactively configures and initializes the database."""
@@ -139,12 +107,15 @@ def init_db():
         config.add_section('codex')
     config.set('codex', 'url', codex_config['url'])
 
-    # Freshservice configuration (optional)
-    fs_config = get_freshservice_config(config)
-    if not config.has_section('freshservice'):
-        config.add_section('freshservice')
-    config.set('freshservice', 'domain', fs_config['domain'])
-    config.set('freshservice', 'api_key', fs_config['api_key'])
+    # Note: KnowledgeTree pulls all data from Codex, not external services
+    print("\n" + "="*70)
+    print("IMPORTANT: KnowledgeTree pulls data from Codex, not external services")
+    print("="*70)
+    print("Codex syncs from Freshservice/Datto and provides data to KnowledgeTree")
+    print("Configure Codex connection above, then run sync scripts:")
+    print("  - sync_codex.py (company structure)")
+    print("  - sync_tickets.py (ticket data from Codex)")
+    print("="*70)
 
     # Save configuration
     with open(config_path, 'w') as configfile:
@@ -158,7 +129,7 @@ def init_db():
     print("\nNext steps:")
     print("  1. Sync company structure from Codex:")
     print("     → python sync_codex.py")
-    print("  2. (Optional) Sync tickets from Freshservice:")
+    print("  2. Sync tickets from Codex:")
     print("     → python sync_tickets.py")
     print("  3. Start the KnowledgeTree service:")
     print("     → flask run --port=5020         # Development")

@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 """
-Syncs support tickets from Freshservice into KnowledgeTree.
+Syncs support tickets from Codex into KnowledgeTree.
 
 Creates tickets under each user's /Tickets/ attached folder.
+Pulls ticket data from Codex (which syncs from Freshservice).
 """
 
 import os
 import sys
-import requests
-import base64
 import time
 import re
 import configparser
@@ -20,11 +19,7 @@ load_dotenv('.flaskenv')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import app
-
-# Ticket status and priority mappings
-STATUS_MAP = {2: "Open", 3: "Pending", 4: "Resolved", 5: "Closed"}
-PRIORITY_MAP = {1: "Low", 2: "Medium", 3: "High", 4: "Urgent"}
-STARTING_TICKET_ID = 550  # Adjust as needed
+from app.service_client import call_service
 
 def get_config():
     """Loads configuration from knowledgetree.conf."""
@@ -38,103 +33,7 @@ def get_config():
     config.read(config_path)
     return config
 
-def get_freshservice_api(domain, api_key, endpoint_with_params):
-    """Generic function to handle GET requests to Freshservice API."""
-    auth_str = f"{api_key}:X"
-    encoded_auth = base64.b64encode(auth_str.encode()).decode()
-    headers = {"Content-Type": "application/json", "Authorization": f"Basic {encoded_auth}"}
-    url = f"https://{domain}{endpoint_with_params}"
-
-    try:
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code == 429:
-            retry_after = int(response.headers.get('Retry-After', 15))
-            print(f"Rate limit hit. Waiting for {retry_after} seconds.")
-            time.sleep(retry_after)
-            return get_freshservice_api(domain, api_key, endpoint_with_params)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching from {url}: {e}", file=sys.stderr)
-        return None
-
-def get_latest_stored_ticket_id(session):
-    """Queries the database to find the highest ticket ID currently stored."""
-    result = session.run("""
-        MATCH (t:ContextItem)
-        WHERE t.id STARTS WITH 'ticket_'
-        RETURN toInteger(substring(t.id, 7)) AS ticket_num
-        ORDER BY ticket_num DESC
-        LIMIT 1
-    """).single()
-    return result['ticket_num'] if result else STARTING_TICKET_ID - 1
-
-def get_new_ticket_ids_since(domain, api_key, latest_id):
-    """Efficiently finds only ticket IDs newer than the latest one we have."""
-    new_ids = []
-    page = 1
-    print(f"Database contains tickets up to #{latest_id}. Checking for newer ones...")
-
-    while True:
-        endpoint = f"/api/v2/tickets?page={page}&per_page=100&order_by=created_at&order_type=desc"
-        data = get_freshservice_api(domain, api_key, endpoint)
-        if not data or 'tickets' not in data or not data['tickets']:
-            break
-
-        found_older_ticket = False
-        for ticket in data['tickets']:
-            if ticket['id'] > latest_id:
-                new_ids.append(ticket['id'])
-            else:
-                found_older_ticket = True
-                break
-
-        if found_older_ticket:
-            break
-
-        page += 1
-        time.sleep(0.5)
-
-    print(f"Found {len(new_ids)} new tickets to process.")
-    return new_ids
-
-def get_all_ticket_ids_for_overwrite(domain, api_key):
-    """Gets all ticket IDs for a full refresh."""
-    all_ids = []
-    page = 1
-    print("Overwrite enabled: fetching all ticket IDs since the beginning.")
-
-    while True:
-        endpoint = f"/api/v2/tickets?page={page}&per_page=100&order_by=created_at&order_type=asc"
-        data = get_freshservice_api(domain, api_key, endpoint)
-        if not data or 'tickets' not in data or not data['tickets']:
-            break
-
-        page_ids = [t['id'] for t in data['tickets'] if t['id'] >= STARTING_TICKET_ID]
-        all_ids.extend(page_ids)
-
-        if not page_ids or len(page_ids) < 100:
-            break
-        page += 1
-
-    print(f"Found {len(all_ids)} total tickets to process for overwrite.")
-    return all_ids
-
-def sanitize_filename(name):
-    """Removes invalid characters from a string so it can be used as a filename."""
-    return re.sub(r'[<>:"/\\|?*]', '_', name)
-
-def find_user_by_email(session, email):
-    """Finds a user's folder ID by email."""
-    result = session.run("""
-        MATCH (user:ContextItem)
-        WHERE user.id CONTAINS $email AND user.is_folder = true
-        RETURN user.id as id
-        LIMIT 1
-    """, email=email.replace('@', '_').replace('.', '_')).single()
-    return result['id'] if result else None
-
-def ensure_node(session, parent_id, name, is_folder=False, is_attached=False, content='', read_only=True):
+def ensure_node(session, parent_id, name, is_folder=True, is_attached=False, content='', read_only=True):
     """Creates or updates a node in Neo4j."""
     node_id = f"{parent_id}_{name.replace(' ', '_').replace('/', '_')}"
 
@@ -147,142 +46,176 @@ def ensure_node(session, parent_id, name, is_folder=False, is_attached=False, co
                       node.content = $content,
                       node.read_only = $read_only
         ON MATCH SET  node.name = $name,
-                      node.content = $content
+                      node.is_folder = $is_folder,
+                      node.is_attached = $is_attached,
+                      node.content = $content,
+                      node.read_only = $read_only
         RETURN node.id as id
     """, parent_id=parent_id, node_id=node_id, name=name, is_folder=is_folder,
          is_attached=is_attached, content=content, read_only=read_only).single()
 
     return result['id']
 
-def sync_tickets(driver, domain, api_key, overwrite=False):
-    """Syncs tickets from Freshservice."""
-    print("\n--- Syncing Tickets from Freshservice ---")
+def get_user_node_id(session, user_email):
+    """Find the KnowledgeTree node ID for a user by email."""
+    # Try to find user node by searching for Contact.md that contains the email
+    result = session.run("""
+        MATCH (contact:ContextItem)
+        WHERE contact.name = 'Contact.md'
+          AND contact.content CONTAINS $email
+        MATCH (user_folder:ContextItem)-[:PARENT_OF]->(contact)
+        RETURN user_folder.id as id
+    """, email=user_email).single()
 
-    with driver.session() as session:
-        # Get ticket IDs to process
-        if overwrite:
-            ticket_ids_to_process = get_all_ticket_ids_for_overwrite(domain, api_key)
-        else:
-            latest_id = get_latest_stored_ticket_id(session)
-            ticket_ids_to_process = get_new_ticket_ids_since(domain, api_key, latest_id)
+    return result['id'] if result else None
 
-        if not ticket_ids_to_process:
-            print("No new tickets to sync.")
+def sync_tickets_from_codex(driver):
+    """Syncs tickets from Codex for all companies."""
+    print("\n--- Syncing Tickets from Codex ---")
+
+    with app.app_context():
+        # Get all companies from Codex
+        companies_response = call_service('codex', '/api/companies')
+        if companies_response.status_code != 200:
+            print("ERROR: Failed to fetch companies from Codex")
             return
 
-        for ticket_id in sorted(ticket_ids_to_process):
-            ticket_id_str = str(ticket_id)
-            print(f"Processing Ticket #{ticket_id_str}...")
+        companies = companies_response.json()
+        print(f"Found {len(companies)} companies")
 
-            # Get full ticket details
-            ticket_data = get_freshservice_api(domain, api_key, f"/api/v2/tickets/{ticket_id_str}")
-            if not ticket_data or 'ticket' not in ticket_data:
-                print(f"  - FAILED to get full details for #{ticket_id_str}")
+        total_tickets_synced = 0
+
+        for company in companies:
+            account_number = company['account_number']
+            company_name = company['name']
+
+            print(f"\n  Processing tickets for: {company_name} ({account_number})")
+
+            # Get tickets for this company from Codex
+            tickets_response = call_service('codex', f'/api/companies/{account_number}/tickets')
+            if tickets_response.status_code != 200:
+                print(f"    → Skipping - no tickets endpoint available")
                 continue
 
-            ticket = ticket_data['ticket']
+            tickets = tickets_response.json()
+            print(f"    → Found {len(tickets)} tickets")
 
-            # Get requester email
-            requester_id = ticket.get('requester_id')
-            if not requester_id:
-                print(f"  - Skipping: No requester ID found.")
+            if not tickets:
                 continue
 
-            # Get requester details
-            requester_data = get_freshservice_api(domain, api_key, f"/api/v2/requesters/{requester_id}")
-            if not requester_data or 'requester' not in requester_data:
-                print(f"  - Skipping: Could not get requester details.")
-                continue
+            # Get contacts for this company to map ticket requesters
+            contacts_response = call_service('codex', f'/api/companies/{account_number}/contacts')
+            contacts = contacts_response.json() if contacts_response.status_code == 200 else []
 
-            requester_email = requester_data['requester'].get('primary_email')
-            if not requester_email:
-                print(f"  - Skipping: No email for requester.")
-                continue
+            # Create email to name mapping
+            email_to_name = {c['email']: c['name'] for c in contacts if c.get('email')}
 
-            # Find user folder in KnowledgeTree
-            user_folder_id = find_user_by_email(session, requester_email)
-            if not user_folder_id:
-                print(f"  - Skipping: User {requester_email} not found in KnowledgeTree.")
-                continue
+            with driver.session() as session:
+                for ticket in tickets:
+                    ticket_id = ticket.get('ticket_id') or ticket.get('ticket_number')
+                    subject = ticket.get('subject', 'No Subject')
+                    description = ticket.get('description_text', 'No description')
+                    status = ticket.get('status', 'Closed')
+                    priority = ticket.get('priority', 'Medium')
+                    requester_name = ticket.get('requester_name', 'Unknown')
+                    requester_email = ticket.get('requester_email', 'N/A')
 
-            # Ensure Tickets folder exists
-            tickets_folder_id = f"{user_folder_id}_Tickets"
-            session.run("""
-                MATCH (user:ContextItem {id: $user_id})
-                MERGE (user)-[:PARENT_OF]->(tickets:ContextItem {id: $tickets_id})
-                ON CREATE SET tickets.name = 'Tickets',
-                              tickets.is_folder = true,
-                              tickets.is_attached = true,
-                              tickets.read_only = true
-            """, user_id=user_folder_id, tickets_id=tickets_folder_id)
+                    # Build full conversation history
+                    conversations = ticket.get('conversations', [])
+                    notes = ticket.get('notes', [])
 
-            # Get conversations
-            conversations_data = get_freshservice_api(domain, api_key, f"/api/v2/tickets/{ticket_id_str}/conversations")
-            conversations = conversations_data.get('conversations', []) if conversations_data else []
+                    # Create rich ticket content with full context
+                    ticket_content = f"""# Ticket #{ticket_id}: {subject}
 
-            # Build ticket content
-            ticket_subject = ticket.get('subject', 'No Subject')
-            sanitized_subject = sanitize_filename(ticket_subject)
-            ticket_filename = f"{ticket_id_str}_{sanitized_subject}.md"
-
-            description_html = ticket.get('description', '> No description provided.')
-            description_md = md(description_html, heading_style="ATX") if description_html else '> No description provided.'
-
-            conversation_md_parts = []
-            for conv in conversations:
-                sender_name = conv.get('user', {}).get('name', 'Unknown')
-                timestamp = conv.get('created_at', 'No Timestamp')
-                body_html = conv.get('body', '> No content.')
-                body_md = md(body_html, heading_style="ATX") if body_html else '> No content.'
-                conversation_md_parts.append(f"### From: {sender_name} at `{timestamp}`\n\n{body_md}\n\n---")
-
-            conversation_md = "\n".join(conversation_md_parts)
-
-            status_name = STATUS_MAP.get(ticket.get('status'), 'N/A')
-            priority_name = PRIORITY_MAP.get(ticket.get('priority'), 'N/A')
-            agent_name = ticket.get('responder', {}).get('name', 'N/A')
-
-            ticket_md_content = f"""# Ticket #{ticket_id}: {ticket_subject}
-
-- **Status:** {status_name}
-- **Priority:** {priority_name}
-- **Source:** {ticket.get('source_name', 'N/A')}
-- **Created At:** {ticket.get('created_at')}
-- **Agent:** {agent_name}
-- **Group:** {ticket.get('group', {}).get('name', 'N/A')}
+## Ticket Information
+- **Requester:** {requester_name} ({requester_email})
+- **Status:** {status}
+- **Priority:** {priority}
+- **Created:** {ticket.get('created_at', 'N/A')}
+- **Last Updated:** {ticket.get('last_updated_at', 'N/A')}
+- **Closed:** {ticket.get('closed_at', 'N/A')}
+- **Hours Spent:** {ticket.get('total_hours_spent', 0):.2f} hours
 
 ## Description
+{description}
 
-{description_md}
-
-## Conversations
-
-{conversation_md if conversation_md else "> No conversations found."}
 """
 
-            # Create/update ticket node
-            ticket_node_id = f"ticket_{ticket_id_str}"
-            ensure_node(session, tickets_folder_id, ticket_filename,
-                       is_folder=False, content=ticket_md_content, read_only=True)
+                    # Add conversation history
+                    if conversations:
+                        ticket_content += "## Conversation History\n\n"
+                        for i, conv in enumerate(conversations, 1):
+                            from_email = conv.get('from_email', 'Unknown')
+                            created_at = conv.get('created_at', 'N/A')
+                            body = conv.get('body', 'No content')
+                            direction = "→ Incoming" if conv.get('incoming') else "← Outgoing"
 
-            print(f"  - Synced '{ticket_filename}' for {requester_email}")
-            time.sleep(0.2)
+                            ticket_content += f"""### Message {i} - {direction}
+**From:** {from_email}
+**Date:** {created_at}
 
-    print("\n✓ Ticket sync complete!")
+{body}
+
+---
+
+"""
+
+                    # Add internal notes
+                    if notes:
+                        ticket_content += "## Internal Notes\n\n"
+                        for i, note in enumerate(notes, 1):
+                            from_email = note.get('from_email', 'Unknown')
+                            created_at = note.get('created_at', 'N/A')
+                            body = note.get('body', 'No content')
+
+                            ticket_content += f"""### Note {i}
+**From:** {from_email}
+**Date:** {created_at}
+
+{body}
+
+---
+
+"""
+
+                    ticket_content += "\n*Ticket data synced from Codex/Freshservice*\n"
+
+                    # Create ticket in the database
+                    # For simplicity, store under Companies/{Company}/Tickets/
+                    companies_root_id = f"root_Companies"
+                    company_id = f"{companies_root_id}_{company_name.replace(' ', '_')}"
+                    tickets_folder_id = f"{company_id}_Tickets"
+
+                    # Ensure Tickets folder exists
+                    try:
+                        ensure_node(session, company_id, 'Tickets', is_folder=True, is_attached=True)
+                    except:
+                        # Company folder might not exist yet - skip this ticket
+                        continue
+
+                    # Create ticket markdown file
+                    ticket_filename = f"Ticket_{ticket_id}.md"
+                    ensure_node(
+                        session,
+                        tickets_folder_id,
+                        ticket_filename,
+                        is_folder=False,
+                        content=ticket_content,
+                        read_only=True
+                    )
+
+                    total_tickets_synced += 1
+
+                    if total_tickets_synced % 50 == 0:
+                        print(f"    → Synced {total_tickets_synced} tickets so far...")
+
+        print(f"\n✓ Synced {total_tickets_synced} total tickets from Codex")
 
 if __name__ == "__main__":
-    print("--- KnowledgeTree Freshservice Ticket Sync ---")
+    print("--- KnowledgeTree Ticket Sync (from Codex) ---")
 
     try:
         config = get_config()
-
-        # Get Freshservice config
-        fs_domain = config.get('freshservice', 'domain')
-        fs_api_key = config.get('freshservice', 'api_key')
-
-        if not fs_domain or not fs_api_key:
-            print("Freshservice not configured. Run init_db.py to configure.")
-            sys.exit(1)
 
         # Connect to Neo4j
         neo4j_uri = config.get('database', 'neo4j_uri')
@@ -291,14 +224,11 @@ if __name__ == "__main__":
 
         driver = GraphDatabase.driver(neo4j_uri, auth=basic_auth(neo4j_user, neo4j_password))
 
-        # Check for overwrite flag
-        should_overwrite = len(sys.argv) > 1 and sys.argv[1].lower() == 'overwrite'
-
-        # Sync tickets
-        sync_tickets(driver, fs_domain, fs_api_key, overwrite=should_overwrite)
+        # Sync tickets from Codex
+        sync_tickets_from_codex(driver)
 
         driver.close()
-        print("\n--- Sync Successful ---")
+        print("\n--- Ticket Sync Successful ---")
 
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}", file=sys.stderr)
