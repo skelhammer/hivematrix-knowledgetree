@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import uuid
 from urllib.parse import unquote, quote
@@ -506,3 +507,11 @@ def admin_sync_status():
             'company_items': stats['company_items'] if stats else 0,
             'ticket_count': ticket_stats['ticket_count'] if ticket_stats else 0
         })
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring"""
+    return {
+        'status': 'healthy',
+        'timestamp': datetime.utcnow().isoformat()
+    }

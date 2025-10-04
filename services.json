@@ -1,9 +1,21 @@
 {
-    "template": {
-        "url": "http://localhost:5001"
+    "keycloak": {
+        "url": "http://localhost:8080"
+    },
+    "core": {
+        "url": "http://localhost:5000"
+    },
+    "nexus": {
+        "url": "http://localhost:8000"
+    },
+    "helm": {
+        "url": "http://localhost:5004"
     },
     "codex": {
         "url": "http://localhost:5010"
+    },
+    "ledger": {
+        "url": "http://localhost:5030"
     },
     "knowledgetree": {
         "url": "http://localhost:5020"
