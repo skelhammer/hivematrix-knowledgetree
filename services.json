@@ -19,5 +19,8 @@
     },
     "knowledgetree": {
         "url": "http://localhost:5020"
+    },
+    "template": {
+        "url": "http://localhost:5040"
     }
 }
