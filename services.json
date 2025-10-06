@@ -2,14 +2,14 @@
     "keycloak": {
         "url": "http://localhost:8080"
     },
+    "helm": {
+        "url": "http://localhost:5004"
+    },
     "core": {
         "url": "http://localhost:5000"
     },
     "nexus": {
         "url": "http://localhost:8000"
-    },
-    "helm": {
-        "url": "http://localhost:5004"
     },
     "codex": {
         "url": "http://localhost:5010"
