@@ -9,7 +9,7 @@
         "url": "http://localhost:5000"
     },
     "nexus": {
-        "url": "http://localhost:8000"
+        "url": "https://localhost:443"
     },
     "codex": {
         "url": "http://localhost:5010"
