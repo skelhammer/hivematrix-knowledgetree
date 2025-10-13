@@ -70,6 +70,22 @@ if [ ! -d "instance" ]; then
     echo ""
 fi
 
+# Create minimal .flaskenv so init_db.py can run
+# Helm will regenerate this with full config later
+if [ ! -f ".flaskenv" ]; then
+    echo -e "${YELLOW}Creating minimal .flaskenv...${NC}"
+    cat > .flaskenv <<EOF
+FLASK_APP=run.py
+FLASK_ENV=development
+SERVICE_NAME=knowledgetree
+CORE_SERVICE_URL=http://localhost:5000
+HELM_SERVICE_URL=http://localhost:5004
+EOF
+    echo -e "${GREEN}✓ Minimal .flaskenv created${NC}"
+    echo -e "${YELLOW}  (Helm will regenerate with full config after setup)${NC}"
+    echo ""
+fi
+
 # Symlink services.json from Helm (if Helm is installed)
 if [ -d "$HELM_DIR" ] && [ -f "$HELM_DIR/services.json" ]; then
     ln -sf "$HELM_DIR/services.json" services.json
