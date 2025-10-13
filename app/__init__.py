@@ -2,6 +2,10 @@ from flask import Flask
 import json
 import os
 
+# Load environment variables from .flaskenv BEFORE creating app
+from dotenv import load_dotenv
+load_dotenv('.flaskenv')
+
 app = Flask(__name__, instance_relative_config=True)
 
 # --- Explicitly load all required configuration from environment variables ---
