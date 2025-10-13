@@ -8,6 +8,18 @@ from app.auth import token_required, admin_required
 from app.service_client import call_service
 import markdown
 
+# --- Helper Functions ---
+def get_neo4j_driver():
+    """Get Neo4j driver or return None with error response"""
+    driver = current_app.config['NEO4J_DRIVER']
+    if driver is None:
+        error_response = render_template('error.html',
+                                         error_title="Database Not Configured",
+                                         error_message="Neo4j database is not configured. Please contact your administrator or run init_db.py to set up the database.",
+                                         user=g.get('user')), 503
+        return None, error_response
+    return driver, None
+
 # --- URL Generation Helper ---
 @app.template_filter('quote_plus')
 def quote_plus_filter(s):
@@ -31,7 +43,10 @@ def browse(path):
     if g.is_service_call:
         return {'error': 'This endpoint is for users only'}, 403
 
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
     path_parts = [p for p in path.split('/') if p]
     parent_path = "/".join([quote(part) for part in path_parts[:-1]])
 
@@ -85,7 +100,9 @@ def view_node(node_id):
     if g.is_service_call:
         return {'error': 'This endpoint is for users only'}, 403
 
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         path_query = """
@@ -119,7 +136,9 @@ def search_nodes():
     if not query:
         return jsonify([])
 
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         result = session.run("""
@@ -158,7 +177,9 @@ def create_node():
         return jsonify({'error': 'parent_id and name are required'}), 400
 
     new_id = str(uuid.uuid4())
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         session.run("""
@@ -180,7 +201,9 @@ def create_node():
 @token_required
 def get_node(node_id):
     """Get node details."""
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         result = session.run("""
@@ -205,7 +228,9 @@ def get_node(node_id):
 def update_node(node_id):
     """Update node details."""
     data = request.json
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         if 'content' in data:
@@ -221,7 +246,9 @@ def update_node(node_id):
 @token_required
 def delete_node(node_id):
     """Delete a node and its children."""
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         session.run("""
@@ -245,7 +272,10 @@ def upload_file_to_node(node_id):
         file_id = str(uuid.uuid4())
         file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
 
-        driver = current_app.config['NEO4J_DRIVER']
+        driver, error = get_neo4j_driver()
+        if error:
+            return error
+
         with driver.session() as session:
             session.run("""
                 MATCH (n:ContextItem {id: $node_id})
@@ -261,7 +291,9 @@ def upload_file_to_node(node_id):
 @token_required
 def get_context_tree(node_id):
     """Get the context tree for a node (attached folders)."""
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         result = session.run("""
@@ -284,7 +316,9 @@ def get_context(node_id):
         data = request.json
         excluded_attached_ids = data.get('excluded_ids', [])
 
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
     all_context_blocks = []
 
     with driver.session() as session:
@@ -353,7 +387,9 @@ def get_context(node_id):
 @admin_required
 def admin_wipe():
     """Wipe the entire database (dangerous!)."""
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
@@ -486,7 +522,9 @@ def admin_sync_tickets():
 @admin_required
 def admin_sync_status():
     """Get sync status information."""
-    driver = current_app.config['NEO4J_DRIVER']
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
 
     with driver.session() as session:
         # Count synced items
