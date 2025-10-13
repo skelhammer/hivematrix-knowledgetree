@@ -87,6 +87,85 @@ def get_codex_config(config, non_interactive=False):
 
     return {'url': url}
 
+def update_helm_config(neo4j_creds, codex_config, non_interactive=False):
+    """Updates Helm's master_config.json with KnowledgeTree Neo4j credentials."""
+    try:
+        # Find Helm directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        helm_dir = os.path.join(parent_dir, 'hivematrix-helm')
+
+        if not os.path.exists(helm_dir):
+            if not non_interactive:
+                print("\n⚠ Helm directory not found - skipping master config update")
+                print(f"  Looked for: {helm_dir}")
+                print("  Run 'python config_manager.py write-dotenv knowledgetree' from Helm to sync")
+            return
+
+        # Load master config
+        master_config_path = os.path.join(helm_dir, 'instance', 'configs', 'master_config.json')
+
+        if not os.path.exists(master_config_path):
+            if not non_interactive:
+                print("\n⚠ Master config not found - skipping update")
+            return
+
+        import json
+        with open(master_config_path, 'r') as f:
+            master_config = json.load(f)
+
+        # Update KnowledgeTree section
+        if 'apps' not in master_config:
+            master_config['apps'] = {}
+
+        if 'knowledgetree' not in master_config['apps']:
+            master_config['apps']['knowledgetree'] = {
+                'database': 'neo4j',
+                'sections': {}
+            }
+
+        # Update Neo4j credentials
+        if 'sections' not in master_config['apps']['knowledgetree']:
+            master_config['apps']['knowledgetree']['sections'] = {}
+
+        master_config['apps']['knowledgetree']['sections']['database'] = {
+            'neo4j_uri': neo4j_creds['uri'],
+            'neo4j_user': neo4j_creds['user'],
+            'neo4j_password': neo4j_creds['password']
+        }
+
+        master_config['apps']['knowledgetree']['sections']['services'] = {
+            'codex_url': codex_config['url'],
+            'core_url': os.environ.get('CORE_SERVICE_URL', 'http://localhost:5000')
+        }
+
+        # Save updated config
+        with open(master_config_path, 'w') as f:
+            json.dump(master_config, f, indent=2)
+
+        if not non_interactive:
+            print("\n✓ Updated Helm master config with Neo4j credentials")
+
+        # Try to regenerate .flaskenv
+        try:
+            sys.path.insert(0, helm_dir)
+            from config_manager import ConfigManager
+
+            cm = ConfigManager()
+            cm.write_app_dotenv('knowledgetree')
+
+            if not non_interactive:
+                print("✓ Regenerated .flaskenv with updated credentials")
+        except Exception as e:
+            if not non_interactive:
+                print(f"\n⚠ Could not regenerate .flaskenv: {e}")
+                print("  Run manually: cd ../hivematrix-helm && python config_manager.py write-dotenv knowledgetree")
+
+    except Exception as e:
+        if not non_interactive:
+            print(f"\n⚠ Failed to update Helm config: {e}")
+            print("  You may need to manually sync config later")
+
 def init_db(non_interactive=False):
     """Configures and initializes the database."""
     instance_path = app.instance_path
@@ -159,6 +238,12 @@ def init_db(non_interactive=False):
 
     if not non_interactive:
         print(f"\n✓ Configuration saved to: {config_path}")
+
+    # Update Helm's master config to keep passwords in sync
+    update_helm_config(creds, codex_config, non_interactive)
+
+    if not non_interactive:
+        print("")
 
         print("\n" + "="*70)
         print(" 🎉 KnowledgeTree Initialization Complete!")
