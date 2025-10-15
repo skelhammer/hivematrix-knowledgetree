@@ -233,7 +233,9 @@
                         return;
                     }
 
-                    const items = await response.json();
+                    const responseText = await response.text();
+                    console.log('Search response body:', responseText);
+                    const items = JSON.parse(responseText);
                     console.log('Search results:', items.length, 'items');
 
                     searchResults.innerHTML = '';
