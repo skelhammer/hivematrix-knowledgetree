@@ -144,7 +144,8 @@ def search_nodes():
     with driver.session() as session:
         result = session.run("""
             MATCH (startNode:ContextItem {id: $start_node_id})-[:PARENT_OF*0..]->(node)
-            WHERE toLower(node.name) CONTAINS toLower($query) OR toLower(node.content) CONTAINS toLower($query)
+            WHERE toLower(node.name) CONTAINS toLower($query)
+               OR (node.content IS NOT NULL AND toLower(node.content) CONTAINS toLower($query))
             WITH DISTINCT node
             MATCH p = (:ContextItem {id: 'root'})-[:PARENT_OF*..]->(node)
             RETURN node.id as id,

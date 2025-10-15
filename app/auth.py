@@ -16,6 +16,7 @@ def token_required(f):
     """
     A decorator to protect routes, ensuring a valid JWT is present.
     This now accepts both user tokens and service tokens.
+    Checks Authorization header first, then falls back to access_token cookie.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -23,11 +24,18 @@ def token_required(f):
         if jwks_client is None:
             init_jwks_client()
 
+        # Try to get token from Authorization header first
         auth_header = request.headers.get('Authorization')
-        if not auth_header or not auth_header.startswith('Bearer '):
-            abort(401, description="Authorization header is missing or invalid.")
+        token = None
 
-        token = auth_header.split(' ')[1]
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+        else:
+            # Fall back to cookie
+            token = request.cookies.get('access_token')
+
+        if not token:
+            abort(401, description="Authorization token is missing.")
 
         try:
             signing_key = jwks_client.get_signing_key_from_jwt(token)
