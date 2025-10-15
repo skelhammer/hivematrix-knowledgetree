@@ -147,6 +147,7 @@
                 const response = await fetch('{{ url_for("create_node") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({
                         name,
                         parent_id: CURRENT_NODE_ID,
@@ -177,6 +178,7 @@
                 await fetch(`{{ url_for('update_node', node_id='') }}${selectedItemId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ name: newName })
                 });
                 window.location.reload();
@@ -186,7 +188,10 @@
         document.getElementById('context-delete').addEventListener('click', async () => {
             if (!selectedItemId) return;
             if (confirm("Are you sure you want to delete this item and all its contents?")) {
-                await fetch(`{{ url_for('delete_node', node_id='') }}${selectedItemId}`, { method: 'DELETE' });
+                await fetch(`{{ url_for('delete_node', node_id='') }}${selectedItemId}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                });
                 window.location.reload();
             }
         });
@@ -212,7 +217,9 @@
                     return;
                 }
 
-                const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${CURRENT_NODE_ID}`);
+                const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${CURRENT_NODE_ID}`, {
+                    credentials: 'same-origin'
+                });
                 const items = await response.json();
 
                 searchResults.innerHTML = '';

@@ -75,7 +75,9 @@
 
         async function loadNodeData() {
             try {
-                const response = await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`);
+                const response = await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`, {
+                    credentials: 'same-origin'
+                });
                 if (!response.ok) {
                     document.body.innerHTML = '<div class="card"><div class="card__body"><h1>Error: Not Found</h1><p>The requested item could not be found.</p></div></div>';
                     return;
@@ -124,10 +126,13 @@
                         await fetch(`{{ url_for('update_node', node_id='') }}${NODE_ID}`, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json' },
+                            credentials: 'same-origin',
                             body: JSON.stringify({ content: editor.getMarkdown() })
                         });
                         alert('Content saved!');
-                        const updatedData = await (await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`)).json();
+                        const updatedData = await (await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`, {
+                            credentials: 'same-origin'
+                        })).json();
                         document.getElementById('content-display').innerHTML = updatedData.content_html;
                     });
                 }
@@ -150,7 +155,9 @@
             generateBtn.style.display = 'block';
             contextModal.style.display = 'block';
 
-            const response = await fetch(`{{ url_for('get_context_tree', node_id='') }}${NODE_ID}`);
+            const response = await fetch(`{{ url_for('get_context_tree', node_id='') }}${NODE_ID}`, {
+                credentials: 'same-origin'
+            });
             const data = await response.json();
 
             treeContainer.innerHTML = '';
@@ -198,6 +205,7 @@
             const response = await fetch(`{{ url_for('get_context', node_id='') }}${NODE_ID}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
                 body: JSON.stringify({ excluded_ids: excludedIds })
             });
             const data = await response.json();
@@ -246,6 +254,7 @@
 
             const response = await fetch(`{{ url_for('upload_file_to_node', node_id='') }}${NODE_ID}`, {
                 method: 'POST',
+                credentials: 'same-origin',
                 body: formData
             });
 

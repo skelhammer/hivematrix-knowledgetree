@@ -141,7 +141,9 @@
         // Load sync status
         async function loadSyncStatus() {
             try {
-                const response = await fetch('{{ url_for("admin_sync_status") }}');
+                const response = await fetch('{{ url_for("admin_sync_status") }}', {
+                    credentials: 'same-origin'
+                });
                 const data = await response.json();
                 document.getElementById('sync-status').innerHTML = `
                     <table>
@@ -175,7 +177,8 @@
 
             try {
                 const response = await fetch('{{ url_for("admin_sync_codex") }}', {
-                    method: 'POST'
+                    method: 'POST',
+                    credentials: 'same-origin'
                 });
                 const data = await response.json();
 
@@ -211,6 +214,7 @@
                 const response = await fetch('{{ url_for("admin_sync_tickets") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ overwrite: false })
                 });
                 const data = await response.json();
@@ -251,6 +255,7 @@
                 const response = await fetch('{{ url_for("admin_sync_tickets") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ overwrite: true })
                 });
                 const data = await response.json();
@@ -288,7 +293,8 @@
 
             try {
                 const response = await fetch('{{ url_for("admin_wipe") }}', {
-                    method: 'POST'
+                    method: 'POST',
+                    credentials: 'same-origin'
                 });
                 const data = await response.json();
 
@@ -330,7 +336,8 @@
             try {
                 const response = await fetch('{{ url_for("admin_import") }}', {
                     method: 'POST',
-                    body: formData,
+                    credentials: 'same-origin',
+                    body: formData
                 });
 
                 const result = await response.json();
