@@ -91,6 +91,9 @@ else:
     print("WARNING: Neo4j not configured. Run init_db.py to set up the database.")
     app.config['NEO4J_DRIVER'] = None
 
+# Configure Flask to generate correct URLs when behind Nexus proxy
+app.config['APPLICATION_ROOT'] = f'/{app.config["SERVICE_NAME"]}'
+
 # Apply middleware to handle URL prefix when behind Nexus proxy
 from app.middleware import PrefixMiddleware
 app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix=f'/{app.config["SERVICE_NAME"]}')
