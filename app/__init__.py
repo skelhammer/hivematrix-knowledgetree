@@ -91,14 +91,16 @@ else:
     print("WARNING: Neo4j not configured. Run init_db.py to set up the database.")
     app.config['NEO4J_DRIVER'] = None
 
-# Nexus handles URL routing:
-# - User requests: https://192.168.1.233/knowledgetree/browse/
-# - Nexus forwards: http://localhost:5020/browse/ (prefix stripped)
-# - Flask receives: /browse/
-# - Flask generates relative URLs: browse/, api/search (no prefix needed)
-# - Browser resolves relative to current path: /knowledgetree/browse/
-#
-# No APPLICATION_ROOT or middleware needed - Nexus handles everything
+# Use ProxyFix to handle X-Forwarded headers from Nexus
+# This sets SCRIPT_NAME based on X-Forwarded-Prefix header
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_for=1,  # Trust X-Forwarded-For
+    x_proto=1,  # Trust X-Forwarded-Proto
+    x_host=1,  # Trust X-Forwarded-Host
+    x_prefix=1  # Trust X-Forwarded-Prefix (sets SCRIPT_NAME)
+)
 
 # Initialize Helm logger for centralized logging
 app.config["SERVICE_NAME"] = os.environ.get("SERVICE_NAME", "knowledgetree")
