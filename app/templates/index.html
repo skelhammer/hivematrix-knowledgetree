@@ -217,56 +217,35 @@
                     return;
                 }
 
-                const searchUrl = `{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${CURRENT_NODE_ID}`;
-                console.log('Search URL:', searchUrl);
+                const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${CURRENT_NODE_ID}`, {
+                    credentials: 'same-origin'
+                });
+                const items = await response.json();
 
-                try {
-                    const response = await fetch(searchUrl, {
-                        credentials: 'same-origin'
-                    });
-                    console.log('Search response status:', response.status);
-
-                    if (!response.ok) {
-                        console.error('Search failed:', response.status, await response.text());
-                        searchResults.innerHTML = '<div style="padding: 10px;">Search error. Check console.</div>';
-                        searchResults.style.display = 'block';
-                        return;
-                    }
-
-                    const responseText = await response.text();
-                    console.log('Search response body:', responseText);
-                    const items = JSON.parse(responseText);
-                    console.log('Search results:', items.length, 'items');
-
-                    searchResults.innerHTML = '';
-                    if (items.length === 0) {
-                        searchResults.innerHTML = '<div style="padding: 10px;">No results found.</div>';
-                    } else {
-                        items.forEach(item => {
-                            const div = document.createElement('div');
-                            div.style.cssText = 'padding: 10px; cursor: pointer; border-bottom: 1px solid #dee2e6;';
-                            div.innerHTML = `<strong>${item.name}</strong><br><small style="color: #6c757d;">${item.folder_path}</small>`;
-                            div.addEventListener('click', () => {
-                                if (item.is_folder) {
-                                    window.location.href = `{{ url_for('browse', path='') }}${item.folder_path}`;
-                                } else {
-                                    window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
-                                }
-                            });
-                            searchResults.appendChild(div);
+                searchResults.innerHTML = '';
+                if (items.length === 0) {
+                    searchResults.innerHTML = '<div style="padding: 10px;">No results found.</div>';
+                } else {
+                    items.forEach(item => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'padding: 10px; cursor: pointer; border-bottom: 1px solid #dee2e6;';
+                        div.innerHTML = `<strong>${item.name}</strong><br><small style="color: #6c757d;">${item.folder_path}</small>`;
+                        div.addEventListener('click', () => {
+                            if (item.is_folder) {
+                                window.location.href = `{{ url_for('browse', path='') }}${item.folder_path}`;
+                            } else {
+                                window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
+                            }
                         });
-                    }
-
-                    const rect = searchInput.getBoundingClientRect();
-                    searchResults.style.top = `${rect.bottom + window.scrollY}px`;
-                    searchResults.style.left = `${rect.left + window.scrollX}px`;
-                    searchResults.style.width = `${rect.width}px`;
-                    searchResults.style.display = 'block';
-                } catch (error) {
-                    console.error('Search error:', error);
-                    searchResults.innerHTML = '<div style="padding: 10px;">Search error. Check console.</div>';
-                    searchResults.style.display = 'block';
+                        searchResults.appendChild(div);
+                    });
                 }
+
+                const rect = searchInput.getBoundingClientRect();
+                searchResults.style.top = `${rect.bottom + window.scrollY}px`;
+                searchResults.style.left = `${rect.left + window.scrollX}px`;
+                searchResults.style.width = `${rect.width}px`;
+                searchResults.style.display = 'block';
             }, 300);
         });
 
