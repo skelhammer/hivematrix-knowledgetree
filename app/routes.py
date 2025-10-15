@@ -3,7 +3,7 @@ import json
 import os
 import uuid
 from urllib.parse import unquote, quote
-from flask import render_template, request, jsonify, send_from_directory, send_file, g, current_app, url_for
+from flask import render_template, request, jsonify, send_from_directory, send_file, redirect, g, current_app, url_for
 from app import app
 from app.auth import token_required, admin_required
 from app.service_client import call_service
@@ -34,7 +34,7 @@ def index():
     """Redirect to browse root."""
     if g.is_service_call:
         return {'error': 'This endpoint is for users only'}, 403
-    return render_template('redirect.html', target_url=url_for('browse', path=''))
+    return redirect(url_for('browse', path=''))
 
 @app.route('/browse/', defaults={'path': ''})
 @app.route('/browse/<path:path>')
