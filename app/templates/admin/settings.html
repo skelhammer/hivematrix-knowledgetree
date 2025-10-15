@@ -311,7 +311,9 @@
 
         // Export data
         document.getElementById('export-data-btn').addEventListener('click', async () => {
-            window.location.href = '{{ url_for("admin_export") }}';
+            const exportUrl = '{{ url_for("admin_export") }}';
+            console.log('Export URL:', exportUrl);
+            window.location.href = exportUrl;
         });
 
         // Import data
