@@ -34,7 +34,19 @@ def index():
     """Redirect to browse root."""
     if g.is_service_call:
         return {'error': 'This endpoint is for users only'}, 403
-    return redirect(url_for('browse', path=''))
+
+    # Debug: Log request info
+    print(f"Index route - Request path: {request.path}")
+    print(f"Index route - Request URL: {request.url}")
+    print(f"Index route - SCRIPT_NAME: {request.environ.get('SCRIPT_NAME', 'NOT SET')}")
+    print(f"Index route - PATH_INFO: {request.environ.get('PATH_INFO', 'NOT SET')}")
+    print(f"Index route - X-Forwarded-Prefix: {request.headers.get('X-Forwarded-Prefix', 'NOT SET')}")
+    print(f"Index route - X-Forwarded-Host: {request.headers.get('X-Forwarded-Host', 'NOT SET')}")
+
+    browse_url = url_for('browse', path='')
+    print(f"Index route - url_for('browse') generated: {browse_url}")
+
+    return redirect(browse_url)
 
 @app.route('/browse/', defaults={'path': ''})
 @app.route('/browse/<path:path>')
