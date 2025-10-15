@@ -105,6 +105,28 @@
 
     <div class="card">
         <div class="card__header">
+            <h2 class="card__title">Export/Import User Data</h2>
+        </div>
+        <div class="card__body">
+            <h3>Export User Data</h3>
+            <p>Export all user-created (non-read-only) data to a JSON file. This can be used as a backup before wiping the database.</p>
+            <button id="export-data-btn" class="btn btn--primary">
+                <span class="btn__label">Export User Data</span>
+            </button>
+
+            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+
+            <h3>Import User Data</h3>
+            <p>Import data from a previously exported JSON file. This will merge the data into the current database.</p>
+            <input type="file" id="import-file-input" accept=".json" style="margin-bottom: 1rem;">
+            <button id="import-data-btn" class="btn btn--primary">
+                <span class="btn__label">Import User Data</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card__header">
             <h2 class="card__title">Dangerous Actions</h2>
         </div>
         <div class="card__body">
@@ -278,6 +300,51 @@
                 }
             } catch (error) {
                 alert('Error wiping database');
+            }
+        });
+
+        // Export data
+        document.getElementById('export-data-btn').addEventListener('click', async () => {
+            window.location.href = '{{ url_for("admin_export") }}';
+        });
+
+        // Import data
+        document.getElementById('import-data-btn').addEventListener('click', async () => {
+            const file = document.getElementById('import-file-input').files[0];
+            if (!file) {
+                alert('Please select a file to import.');
+                return;
+            }
+            const confirmation = confirm('Are you sure you want to import this data? This may overwrite existing user-created content.');
+            if (!confirmation) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const btn = document.getElementById('import-data-btn');
+            btn.disabled = true;
+            btn.querySelector('.btn__label').textContent = 'Importing...';
+
+            try {
+                const response = await fetch('{{ url_for("admin_import") }}', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Import successful!');
+                    window.location.reload();
+                } else {
+                    alert(`An error occurred: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`A network error occurred: ${error}`);
+            } finally {
+                btn.disabled = false;
+                btn.querySelector('.btn__label').textContent = 'Import User Data';
             }
         });
 

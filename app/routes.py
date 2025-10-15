@@ -1,8 +1,9 @@
 from datetime import datetime
+import json
 import os
 import uuid
 from urllib.parse import unquote, quote
-from flask import render_template, request, jsonify, send_from_directory, g, current_app, url_for
+from flask import render_template, request, jsonify, send_from_directory, send_file, g, current_app, url_for
 from app import app
 from app.auth import token_required, admin_required
 from app.service_client import call_service
@@ -545,6 +546,109 @@ def admin_sync_status():
             'company_items': stats['company_items'] if stats else 0,
             'ticket_count': ticket_stats['ticket_count'] if ticket_stats else 0
         })
+
+@app.route('/admin/export', methods=['GET'])
+@admin_required
+def admin_export():
+    """Export all user-created (non-read-only) data to JSON."""
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
+    try:
+        with driver.session() as session:
+            result = session.run("""
+                MATCH p = (:ContextItem {id:'root'})-[:PARENT_OF*..]->(n:ContextItem)
+                WHERE ALL(node IN nodes(p)[1..] WHERE node.read_only IS NULL OR node.read_only = false)
+                RETURN [node IN nodes(p) | node.name] AS path_parts,
+                       n.content AS content,
+                       n.is_folder AS is_folder,
+                       n.is_attached AS is_attached
+            """)
+
+            export_data = []
+            for record in result:
+                # Skip the root node name from the path
+                path = "/".join(record['path_parts'][1:])
+                export_data.append({
+                    "path": path,
+                    "content": record['content'],
+                    "is_folder": record['is_folder'],
+                    "is_attached": record['is_attached']
+                })
+
+            # Save to temporary file
+            export_file_path = os.path.join(current_app.instance_path, "knowledgetree_export.json")
+            with open(export_file_path, 'w') as f:
+                json.dump(export_data, f, indent=2)
+
+            return send_file(export_file_path, as_attachment=True, download_name='knowledgetree_export.json')
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/import', methods=['POST'])
+@admin_required
+def admin_import():
+    """Import data from a previously exported JSON file."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+
+    file = request.files['file']
+    if not file:
+        return jsonify({'error': 'No file selected'}), 400
+
+    try:
+        import_data = json.load(file)
+        # Sort by path so that parent directories are processed before their children
+        import_data.sort(key=lambda x: x['path'])
+
+        driver, error = get_neo4j_driver()
+        if error:
+            return error
+
+        with driver.session() as session:
+            with session.begin_transaction() as tx:
+                for item in import_data:
+                    path_parts = item['path'].split('/')
+                    item_name = path_parts[-1]
+                    parent_path_parts = path_parts[:-1]
+
+                    # Find the parent node by traversing from the root
+                    current_parent_id = 'root'
+                    for folder_name in parent_path_parts:
+                        result = tx.run(
+                            "MATCH (parent:ContextItem {id: $parent_id})-[:PARENT_OF]->(child:ContextItem {name: $name}) RETURN child.id as id",
+                            parent_id=current_parent_id, name=folder_name).single()
+
+                        if result:
+                            current_parent_id = result['id']
+                        else:
+                            raise Exception(f"Inconsistent data: parent folder '{folder_name}' not found for item '{item_name}'.")
+
+                    # Create or update the item itself
+                    is_folder = item.get('is_folder', False)
+                    is_attached = item.get('is_attached', False) and is_folder
+                    content = item.get('content', '') if not is_folder else ''
+
+                    # MERGE on the relationship pattern to correctly find or create the node
+                    tx.run("""
+                        MATCH (parent:ContextItem {id: $parent_id})
+                        MERGE (parent)-[r:PARENT_OF]->(item:ContextItem {name: $name})
+                        ON CREATE SET item.id = $id,
+                                      item.is_folder = $is_folder,
+                                      item.is_attached = $is_attached,
+                                      item.content = $content,
+                                      item.read_only = false
+                        ON MATCH SET  item.is_folder = $is_folder,
+                                      item.is_attached = $is_attached,
+                                      item.content = $content
+                    """, parent_id=current_parent_id, name=item_name, id=str(uuid.uuid4()),
+                         is_folder=is_folder, is_attached=is_attached, content=content)
+
+        return jsonify({'success': True, 'message': 'Import successful.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
