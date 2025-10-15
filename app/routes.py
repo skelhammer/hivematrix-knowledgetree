@@ -143,39 +143,64 @@ def uploaded_file(filename):
 @token_required
 def search_nodes():
     """Search for nodes in the tree."""
+    # Debug logging
+    print(f"=== SEARCH DEBUG ===")
+    print(f"Request path: {request.path}")
+    print(f"Request full path: {request.full_path}")
+    print(f"Request args: {dict(request.args)}")
+    print(f"Query param 'query': {request.args.get('query', 'NOT SET')}")
+    print(f"Query param 'start_node_id': {request.args.get('start_node_id', 'NOT SET')}")
+    print(f"Is service call: {g.is_service_call}")
+    print(f"User: {g.user.get('username') if g.user else 'NO USER'}")
+
     query = request.args.get('query', '')
     start_node_id = request.args.get('start_node_id', 'root')
 
+    print(f"Extracted query: '{query}'")
+    print(f"Extracted start_node_id: '{start_node_id}'")
+
     if not query:
+        print(f"Query is empty, returning empty array")
         return jsonify([])
 
     driver, error = get_neo4j_driver()
     if error:
+        print(f"Neo4j driver error: {error}")
         return error
 
-    with driver.session() as session:
-        result = session.run("""
-            MATCH (startNode:ContextItem {id: $start_node_id})-[:PARENT_OF*0..]->(node)
-            WHERE toLower(node.name) CONTAINS toLower($query)
-               OR (node.content IS NOT NULL AND toLower(node.content) CONTAINS toLower($query))
-            WITH DISTINCT node
-            MATCH p = (:ContextItem {id: 'root'})-[:PARENT_OF*..]->(node)
-            RETURN node.id as id,
-                   node.name as name,
-                   node.is_folder as is_folder,
-                   [n IN nodes(p) | n.name] AS path_names
-            LIMIT 15
-        """, {'start_node_id': start_node_id, 'query': query})
+    print(f"Running Neo4j query with params: start_node_id={start_node_id}, query={query}")
 
-        processed_results = []
-        for record in result:
-            record_dict = dict(record)
-            path_list = record_dict['path_names'][1:]
-            folder_path = "/".join([quote(name) for name in path_list])
-            record_dict['folder_path'] = folder_path
-            processed_results.append(record_dict)
+    try:
+        with driver.session() as session:
+            result = session.run("""
+                MATCH (startNode:ContextItem {id: $start_node_id})-[:PARENT_OF*0..]->(node)
+                WHERE toLower(node.name) CONTAINS toLower($query)
+                   OR (node.content IS NOT NULL AND toLower(node.content) CONTAINS toLower($query))
+                WITH DISTINCT node
+                MATCH p = (:ContextItem {id: 'root'})-[:PARENT_OF*..]->(node)
+                RETURN node.id as id,
+                       node.name as name,
+                       node.is_folder as is_folder,
+                       [n IN nodes(p) | n.name] AS path_names
+                LIMIT 15
+            """, {'start_node_id': start_node_id, 'query': query})
 
-        return jsonify(processed_results)
+            processed_results = []
+            for record in result:
+                record_dict = dict(record)
+                path_list = record_dict['path_names'][1:]
+                folder_path = "/".join([quote(name) for name in path_list])
+                record_dict['folder_path'] = folder_path
+                processed_results.append(record_dict)
+
+            print(f"Query returned {len(processed_results)} results")
+            print(f"=== END SEARCH DEBUG ===")
+            return jsonify(processed_results)
+    except Exception as e:
+        print(f"Exception during search: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/node', methods=['POST'])
 @token_required
