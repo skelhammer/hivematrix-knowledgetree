@@ -165,6 +165,91 @@ def search_nodes():
 
         return jsonify(processed_results)
 
+@app.route('/api/browse', methods=['GET'])
+@token_required
+def api_browse():
+    """
+    API endpoint for browsing the knowledge tree.
+    This allows service-to-service calls.
+
+    Query params:
+        path: Path to browse (default: /)
+
+    Returns:
+        {
+            "path": "/some/path",
+            "categories": [{"name": "Folder", "path": "/some/path/Folder"}],
+            "articles": [{"id": "node-123", "title": "Article Name", "summary": "..."}]
+        }
+    """
+    path = request.args.get('path', '/')
+
+    driver, error = get_neo4j_driver()
+    if error:
+        return jsonify({'error': 'Database not configured'}), 503
+
+    # Remove leading/trailing slashes and split path
+    path = path.strip('/')
+    path_parts = [p for p in path.split('/') if p]
+
+    with driver.session() as session:
+        # Find the node at this path
+        query = "MATCH (n0:ContextItem {id: 'root'})"
+        match_clauses, where_clauses, params = [], [], {}
+
+        for i, part in enumerate(path_parts):
+            prev_node, curr_node = f"n{i}", f"n{i+1}"
+            param_name = f"part_{i}"
+            match_clauses.append(f"MATCH ({prev_node})-[:PARENT_OF]->({curr_node})")
+            where_clauses.append(f"{curr_node}.name = ${param_name}")
+            params[param_name] = unquote(part)
+
+        full_query = "\n".join([query] + match_clauses)
+        if where_clauses:
+            full_query += "\nWHERE " + " AND ".join(where_clauses)
+        full_query += f"\nRETURN n{len(path_parts)}.id as id"
+
+        result = session.run(full_query, params).single()
+        if not result:
+            return jsonify({'error': 'Path not found', 'path': f'/{path}'}), 404
+
+        node_id = result['id']
+
+        # Get children
+        children_query = """
+            MATCH (:ContextItem {id: $parent_id})-[:PARENT_OF]->(child)
+            RETURN DISTINCT child.id AS id, child.name AS name, child.is_folder AS is_folder,
+                   child.content as content
+            ORDER BY child.is_folder DESC, child.name
+        """
+        children_result = session.run(children_query, parent_id=node_id)
+
+        categories = []
+        articles = []
+
+        for record in children_result:
+            if record['is_folder']:
+                child_path = f"/{path}/{record['name']}" if path else f"/{record['name']}"
+                categories.append({
+                    'name': record['name'],
+                    'path': child_path
+                })
+            else:
+                # Extract summary from content (first 200 chars)
+                content = record['content'] or ''
+                summary = content[:200] + '...' if len(content) > 200 else content
+                articles.append({
+                    'id': record['id'],
+                    'title': record['name'],
+                    'summary': summary
+                })
+
+        return jsonify({
+            'path': f'/{path}' if path else '/',
+            'categories': categories,
+            'articles': articles
+        })
+
 @app.route('/api/node', methods=['POST'])
 @token_required
 def create_node():
