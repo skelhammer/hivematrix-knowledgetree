@@ -166,6 +166,62 @@ def update_helm_config(neo4j_creds, codex_config, non_interactive=False):
             print(f"\n⚠ Failed to update Helm config: {e}")
             print("  You may need to manually sync config later")
 
+def init_db_headless(neo4j_uri, neo4j_user, neo4j_password, codex_url=None):
+    """Non-interactive database initialization for automated installation."""
+    print("\n" + "="*80)
+    print("KNOWLEDGETREE DATABASE INITIALIZATION (HEADLESS MODE)")
+    print("="*80)
+
+    instance_path = app.instance_path
+    os.makedirs(instance_path, exist_ok=True)
+    config_path = os.path.join(instance_path, 'knowledgetree.conf')
+
+    config = configparser.RawConfigParser()
+
+    # Test Neo4j connection
+    print(f"\n→ Testing Neo4j connection to {neo4j_uri}...")
+    creds = {
+        'uri': neo4j_uri,
+        'user': neo4j_user,
+        'password': neo4j_password
+    }
+
+    if test_neo4j_connection(creds):
+        print("✓ Neo4j connection successful")
+    else:
+        print("✗ Neo4j connection failed (proceeding anyway for initial setup)", file=sys.stderr)
+
+    # Save Neo4j configuration
+    if not config.has_section('database'):
+        config.add_section('database')
+    config.set('database', 'neo4j_uri', neo4j_uri)
+    config.set('database', 'neo4j_user', neo4j_user)
+    config.set('database', 'neo4j_password', neo4j_password)
+
+    # Codex configuration
+    if not codex_url:
+        codex_url = 'http://localhost:5010'
+
+    if not config.has_section('services'):
+        config.add_section('services')
+    config.set('services', 'codex_url', codex_url)
+    config.set('services', 'core_url', os.environ.get('CORE_SERVICE_URL', 'http://localhost:5000'))
+
+    # Save configuration
+    with open(config_path, 'w') as configfile:
+        config.write(configfile)
+    print(f"✓ Configuration saved to: {config_path}")
+
+    # Update Helm config
+    codex_config = {'url': codex_url}
+    update_helm_config(creds, codex_config, non_interactive=True)
+
+    print("\n" + "="*80)
+    print(" ✓ KnowledgeTree Initialization Complete!")
+    print("="*80)
+
+
+
 def init_db(non_interactive=False):
     """Configures and initializes the database."""
     instance_path = app.instance_path
@@ -264,6 +320,28 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Initialize KnowledgeTree database')
     parser.add_argument('--non-interactive', action='store_true',
                         help='Run in non-interactive mode using existing config/environment')
+    parser.add_argument('--headless', action='store_true',
+                        help='Non-interactive mode for automated installation')
+    parser.add_argument('--neo4j-uri', type=str, default='bolt://localhost:7687',
+                        help='Neo4j URI (default: bolt://localhost:7687)')
+    parser.add_argument('--neo4j-user', type=str, default='neo4j',
+                        help='Neo4j user (default: neo4j)')
+    parser.add_argument('--neo4j-password', type=str,
+                        help='Neo4j password (required for headless mode)')
+    parser.add_argument('--codex-url', type=str, default='http://localhost:5010',
+                        help='Codex service URL (default: http://localhost:5010)')
     args = parser.parse_args()
 
-    init_db(non_interactive=args.non_interactive)
+    if args.headless:
+        if not args.neo4j_password:
+            print("ERROR: --neo4j-password is required for headless mode", file=sys.stderr)
+            sys.exit(1)
+
+        init_db_headless(
+            neo4j_uri=args.neo4j_uri,
+            neo4j_user=args.neo4j_user,
+            neo4j_password=args.neo4j_password,
+            codex_url=args.codex_url
+        )
+    else:
+        init_db(non_interactive=args.non_interactive)
