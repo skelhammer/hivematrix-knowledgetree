@@ -246,6 +246,7 @@ def api_browse():
 
         return jsonify({
             'path': f'/{path}' if path else '/',
+            'current_node': {'id': node_id},
             'categories': categories,
             'articles': articles
         })
