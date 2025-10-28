@@ -270,6 +270,19 @@ def create_node():
         return error
 
     with driver.session() as session:
+        # Check for duplicate name in same parent
+        duplicate_check = session.run("""
+            MATCH (parent:ContextItem {id: $parent_id})-[:PARENT_OF]->(existing)
+            WHERE existing.name = $name
+            RETURN existing.id as existing_id
+        """, parent_id=parent_id, name=name).single()
+
+        if duplicate_check:
+            return jsonify({
+                'error': 'A node with this name already exists in this location',
+                'existing_id': duplicate_check['existing_id']
+            }), 409
+
         session.run("""
             MATCH (parent:ContextItem {id: $parent_id})
             CREATE (child:ContextItem {
