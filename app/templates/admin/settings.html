@@ -24,40 +24,6 @@
 
     <div class="card">
         <div class="card__header">
-            <h2 class="card__title">Current Configuration</h2>
-        </div>
-        <div class="card__body">
-            <table>
-                <tbody>
-                    <tr>
-                        <td><strong>Neo4j URI:</strong></td>
-                        <td>{{ settings.neo4j_uri }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Codex Service:</strong></td>
-                        <td>{{ settings.codex_url }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Freshservice Domain:</strong></td>
-                        <td>{{ settings.freshservice_domain }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Freshservice Status:</strong></td>
-                        <td>
-                            {% if settings.freshservice_configured %}
-                                <span class="status-text status-text--success">✓ Configured</span>
-                            {% else %}
-                                <span class="status-text status-text--warning">Not configured</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card__header">
             <h2 class="card__title">Sync Status</h2>
         </div>
         <div class="card__body">
@@ -82,34 +48,6 @@
                 <h4>Sync Output:</h4>
                 <pre class="code-block"></pre>
             </div>
-
-            <hr class="u-mt-4 u-mb-4">
-
-            {% if settings.freshservice_configured %}
-            <h3>Freshservice Ticket Sync</h3>
-            <p>Synchronize support tickets from Freshservice.</p>
-            <div class="u-flex u-flex-gap-2">
-                <button id="sync-tickets-btn" class="btn btn--primary">
-                    <span class="btn__label">
-                        <i data-lucide="refresh-cw" class="btn__icon"></i>
-                        Sync New Tickets
-                    </span>
-                </button>
-                <button id="sync-tickets-overwrite-btn" class="btn">
-                    <span class="btn__label">
-                        <i data-lucide="refresh-ccw" class="btn__icon"></i>
-                        Full Refresh (Overwrite)
-                    </span>
-                </button>
-            </div>
-            <div id="tickets-sync-output" class="u-mt-2 u-hidden">
-                <h4>Sync Output:</h4>
-                <pre class="code-block"></pre>
-            </div>
-            {% else %}
-            <h3>Freshservice Ticket Sync</h3>
-            <p class="status-text status-text--warning">Freshservice is not configured. Run <code>python init_db.py</code> to configure ticket syncing.</p>
-            {% endif %}
         </div>
     </div>
 
@@ -171,10 +109,6 @@
                                 <td><strong>Synced Company Items:</strong></td>
                                 <td>${data.company_items}</td>
                             </tr>
-                            <tr>
-                                <td><strong>Synced Tickets:</strong></td>
-                                <td>${data.ticket_count}</td>
-                            </tr>
                         </tbody>
                     </table>
                 `;
@@ -216,88 +150,6 @@
             } finally {
                 btn.disabled = false;
                 btn.querySelector('.btn__label').innerHTML = '<i data-lucide="database" class="btn__icon"></i>Sync from Codex';
-                lucide.createIcons();
-            }
-        });
-
-        // Ticket sync (incremental)
-        document.getElementById('sync-tickets-btn')?.addEventListener('click', async () => {
-            const btn = document.getElementById('sync-tickets-btn');
-            const output = document.getElementById('tickets-sync-output');
-            const pre = output.querySelector('pre');
-
-            btn.disabled = true;
-            btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-cw" class="btn__icon"></i>Syncing...';
-            lucide.createIcons();
-            output.classList.remove('u-hidden');
-            pre.textContent = 'Starting ticket sync...\n';
-
-            try {
-                const response = await fetch('{{ url_for("admin_sync_tickets") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ overwrite: false })
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    pre.textContent = data.output || 'Sync completed successfully!';
-                    alert('Ticket sync completed successfully!');
-                    loadSyncStatus();
-                } else {
-                    pre.textContent = data.error || data.message;
-                    alert('Ticket sync failed. Check output for details.');
-                }
-            } catch (error) {
-                pre.textContent = `Error: ${error.message}`;
-                alert('Failed to run ticket sync');
-            } finally {
-                btn.disabled = false;
-                btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-cw" class="btn__icon"></i>Sync New Tickets';
-                lucide.createIcons();
-            }
-        });
-
-        // Ticket sync (overwrite)
-        document.getElementById('sync-tickets-overwrite-btn')?.addEventListener('click', async () => {
-            if (!confirm('This will refresh ALL tickets. This may take a long time. Continue?')) {
-                return;
-            }
-
-            const btn = document.getElementById('sync-tickets-overwrite-btn');
-            const output = document.getElementById('tickets-sync-output');
-            const pre = output.querySelector('pre');
-
-            btn.disabled = true;
-            btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-ccw" class="btn__icon"></i>Syncing...';
-            lucide.createIcons();
-            output.classList.remove('u-hidden');
-            pre.textContent = 'Starting full ticket refresh...\n';
-
-            try {
-                const response = await fetch('{{ url_for("admin_sync_tickets") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ overwrite: true })
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    pre.textContent = data.output || 'Sync completed successfully!';
-                    alert('Full ticket refresh completed successfully!');
-                    loadSyncStatus();
-                } else {
-                    pre.textContent = data.error || data.message;
-                    alert('Ticket sync failed. Check output for details.');
-                }
-            } catch (error) {
-                pre.textContent = `Error: ${error.message}`;
-                alert('Failed to run ticket sync');
-            } finally {
-                btn.disabled = false;
-                btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-ccw" class="btn__icon"></i>Full Refresh (Overwrite)';
                 lucide.createIcons();
             }
         });
