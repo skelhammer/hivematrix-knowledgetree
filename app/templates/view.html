@@ -67,30 +67,28 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <div class="header-toolbar header-toolbar--space-between">
-                <a href="{{ url_for('browse', path=parent_path) }}">
-                    <button class="btn">
-                        <span class="btn__label">
-                            <i data-lucide="arrow-left" class="btn__icon"></i>
-                            Back
-                        </span>
-                    </button>
-                </a>
-                <h1 class="card__title u-m-0" id="node-name">Loading...</h1>
-                <button id="export-context-btn" class="btn btn--primary">
+            <h1 class="card__title" id="node-name">Loading...</h1>
+            <a href="{{ url_for('browse', path=parent_path) }}">
+                <button class="btn">
                     <span class="btn__label">
-                        <i data-lucide="download" class="btn__icon"></i>
-                        Export Context
+                        <i data-lucide="arrow-left" class="btn__icon"></i>
+                        Back to Dashboard
                     </span>
                 </button>
-            </div>
+            </a>
         </div>
     </div>
 
     <div class="card">
         <div class="card__header">
-            <div class="header-toolbar header-toolbar--space-between">
-                <h2 class="card__title">Content</h2>
+            <h2 class="card__title">Content</h2>
+            <div>
+                <button id="export-context-btn" class="btn">
+                    <span class="btn__label">
+                        <i data-lucide="download" class="btn__icon"></i>
+                        Export Context
+                    </span>
+                </button>
                 <button id="edit-btn" class="btn" style="display: none;">
                     <span class="btn__label">
                         <i data-lucide="edit" class="btn__icon"></i>
