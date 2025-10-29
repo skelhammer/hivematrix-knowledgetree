@@ -50,8 +50,8 @@
         </div>
         <div class="card__body u-p-2">
             <div class="u-flex" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div class="input-group" style="width: 450px;">
-                    <select id="search-scope" class="form-group__input" style="width: 150px;">
+                <div class="input-group" style="width: 470px;">
+                    <select id="search-scope" class="form-group__input" style="width: 170px;">
                         <option value="current">Current Folder</option>
                         <option value="all">All Items</option>
                     </select>
@@ -136,8 +136,10 @@
         const fileBrowser = document.getElementById('file-browser');
         const contextMenu = document.getElementById('context-menu');
         let selectedItemId = null;
+        let createParentId = null; // Track parent folder for creating new items
 
-        if (fileBrowser) {
+        // Function to attach click handlers to file items
+        function attachFileItemHandlers() {
             fileBrowser.querySelectorAll('.file-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const isFolder = item.dataset.isFolder === 'true';
@@ -154,10 +156,16 @@
             });
         }
 
+        // Initial attachment
+        if (fileBrowser) {
+            attachFileItemHandlers();
+        }
+
         // Context menu
         document.getElementById('file-browser-container').addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            const targetItem = e.target.closest('.file-item');
+            // Support both file-item (grid/tree view) and hierarchy-item (hierarchy view)
+            const targetItem = e.target.closest('.file-item') || e.target.closest('.hierarchy-item');
 
             // Get menu items
             const itemActions = document.querySelectorAll('.context-menu__item--item-action');
@@ -165,17 +173,32 @@
             const separator = document.getElementById('context-separator');
 
             if (targetItem) {
-                // Right-clicked on an item - show item actions, hide create actions
-                document.querySelectorAll('.file-item').forEach(el => el.classList.remove('file-item--selected'));
-                targetItem.classList.add('file-item--selected');
+                // Right-clicked on an item
+                document.querySelectorAll('.file-item, .hierarchy-item').forEach(el => {
+                    el.classList.remove('file-item--selected', 'hierarchy-item--selected');
+                });
+                targetItem.classList.add(targetItem.classList.contains('hierarchy-item') ? 'hierarchy-item--selected' : 'file-item--selected');
                 selectedItemId = targetItem.dataset.id;
 
-                itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
-                createActions.forEach(el => el.classList.add('context-menu__item--hidden'));
-                separator.classList.add('context-menu__item--hidden');
+                const isFolder = targetItem.dataset.isFolder === 'true';
+
+                if (isFolder) {
+                    // Right-clicked on a folder - show both item actions AND create actions
+                    itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                    createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                    separator.classList.remove('context-menu__item--hidden');
+                    createParentId = selectedItemId; // Create items inside this folder
+                } else {
+                    // Right-clicked on a file - show only item actions
+                    itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                    createActions.forEach(el => el.classList.add('context-menu__item--hidden'));
+                    separator.classList.add('context-menu__item--hidden');
+                    createParentId = CURRENT_NODE_ID;
+                }
             } else {
                 // Right-clicked on empty space - show create actions, hide item actions
                 selectedItemId = null;
+                createParentId = CURRENT_NODE_ID; // Create in current folder
 
                 itemActions.forEach(el => el.classList.add('context-menu__item--hidden'));
                 createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
@@ -191,7 +214,9 @@
             if (!contextMenu.contains(e.target)) {
                 contextMenu.style.display = 'none';
                 // Clear selection when closing context menu
-                document.querySelectorAll('.file-item').forEach(el => el.classList.remove('file-item--selected'));
+                document.querySelectorAll('.file-item, .hierarchy-item').forEach(el => {
+                    el.classList.remove('file-item--selected', 'hierarchy-item--selected');
+                });
             }
         });
 
@@ -200,13 +225,14 @@
             const type = isAttached ? 'attached folder' : (isFolder ? 'folder' : 'article');
             const name = prompt(`Enter name for new ${type}:`);
             if (name) {
+                const parentId = createParentId || CURRENT_NODE_ID;
                 const response = await fetch('{{ url_for("create_node") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({
                         name,
-                        parent_id: CURRENT_NODE_ID,
+                        parent_id: parentId,
                         is_folder: isFolder,
                         is_attached: isAttached
                     })
@@ -214,9 +240,17 @@
                 if (response.ok) {
                     const result = await response.json();
                     if (!isFolder) {
-                        window.location.href = `{{ url_for('view_node', node_id='') }}${result.id}`;
+                        // Open new articles in edit mode
+                        window.location.href = `{{ url_for('view_node', node_id='') }}${result.id}?edit=true`;
                     } else {
-                        window.location.reload();
+                        // If creating in current folder, add to view without reload
+                        if (parentId === CURRENT_NODE_ID || currentView === 'hierarchy') {
+                            // Reload or add to DOM depending on view
+                            window.location.reload();
+                        } else {
+                            // Created in a subfolder, just clear cache
+                            cachedFolderTree = null;
+                        }
                     }
                 }
             }
@@ -228,39 +262,103 @@
 
         document.getElementById('context-rename').addEventListener('click', async () => {
             if (!selectedItemId) return;
-            const currentName = document.querySelector(`.file-item[data-id="${selectedItemId}"]`).dataset.name;
+            const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
+            const currentName = itemElement ? itemElement.dataset.name : '';
             const newName = prompt("Enter new name:", currentName);
             if (newName && newName !== currentName) {
-                await fetch(`{{ url_for('update_node', node_id='') }}${selectedItemId}`, {
+                const response = await fetch(`{{ url_for('update_node', node_id='') }}${selectedItemId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
                     body: JSON.stringify({ name: newName })
                 });
-                window.location.reload();
+
+                if (response.ok) {
+                    // Update the name in DOM without reloading
+                    const nameElement = itemElement.querySelector('.file-item__name, .hierarchy-item__name');
+                    if (nameElement) {
+                        nameElement.textContent = newName;
+                    }
+                    itemElement.dataset.name = newName;
+
+                    // Invalidate cache
+                    cachedFolderTree = null;
+                }
             }
         });
 
         document.getElementById('context-delete').addEventListener('click', async () => {
             if (!selectedItemId) return;
             if (confirm("Are you sure you want to delete this item and all its contents?")) {
-                await fetch(`{{ url_for('delete_node', node_id='') }}${selectedItemId}`, {
+                const response = await fetch(`{{ url_for('delete_node', node_id='') }}${selectedItemId}`, {
                     method: 'DELETE',
                     credentials: 'same-origin'
                 });
-                window.location.reload();
+
+                if (response.ok) {
+                    // Remove from DOM without reloading
+                    const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
+                    if (itemElement) {
+                        // In hierarchy view, also remove the children container
+                        if (itemElement.classList.contains('hierarchy-item')) {
+                            const childrenDiv = itemElement.nextElementSibling;
+                            if (childrenDiv && childrenDiv.classList.contains('hierarchy-children')) {
+                                childrenDiv.remove();
+                            }
+                        }
+                        itemElement.remove();
+                    }
+
+                    // Remove from expanded folders set if it was a folder
+                    expandedFolders.delete(selectedItemId);
+                    saveExpandedState();
+
+                    // Invalidate cache
+                    cachedFolderTree = null;
+
+                    // Clear selection
+                    selectedItemId = null;
+                }
             }
         });
 
         document.getElementById('context-open').addEventListener('click', () => {
             if (selectedItemId) {
-                const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"]`);
+                const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
                 if(itemElement) itemElement.click();
             }
         });
 
         // Move functionality
         let selectedDestinationId = null;
+        let cachedFolderTree = null; // Cache the folder tree
+
+        // Track expanded folders in hierarchy view with sessionStorage persistence
+        let expandedFolders = new Set();
+
+        // Load expanded folders from sessionStorage
+        function loadExpandedState() {
+            try {
+                const saved = sessionStorage.getItem('knowledgetree_expanded_folders');
+                if (saved) {
+                    expandedFolders = new Set(JSON.parse(saved));
+                }
+            } catch (error) {
+                console.error('Failed to load expanded state:', error);
+            }
+        }
+
+        // Save expanded folders to sessionStorage
+        function saveExpandedState() {
+            try {
+                sessionStorage.setItem('knowledgetree_expanded_folders', JSON.stringify([...expandedFolders]));
+            } catch (error) {
+                console.error('Failed to save expanded state:', error);
+            }
+        }
+
+        // Initialize expanded state from sessionStorage
+        loadExpandedState();
 
         function createFolderTreeNode(folder, level = 0) {
             const li = document.createElement('li');
@@ -274,9 +372,9 @@
             const toggle = document.createElement('span');
             toggle.className = 'folder-tree__toggle';
             if (folder.children && folder.children.length > 0) {
-                toggle.textContent = '▶';
+                toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
             } else {
-                toggle.textContent = '';
+                toggle.innerHTML = '';
             }
 
             // Folder icon
@@ -298,12 +396,13 @@
                 e.stopPropagation();
 
                 // Handle toggle click
-                if (e.target === toggle && folder.children && folder.children.length > 0) {
+                if (e.target.closest('.folder-tree__toggle') === toggle && folder.children && folder.children.length > 0) {
                     const childrenUl = li.querySelector('.folder-tree__children');
                     if (childrenUl) {
                         const isCollapsed = childrenUl.classList.contains('folder-tree__children--collapsed');
                         childrenUl.classList.toggle('folder-tree__children--collapsed');
-                        toggle.textContent = isCollapsed ? '▼' : '▶';
+                        toggle.innerHTML = isCollapsed ? '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>' : '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+                        lucide.createIcons(); // Re-initialize the new icon
                     }
                     return;
                 }
@@ -339,21 +438,44 @@
             const moveModal = document.getElementById('move-modal');
             const folderList = document.getElementById('folder-list');
 
-            // Fetch folder tree
-            const response = await fetch('{{ url_for("get_folder_tree") }}', {
-                credentials: 'same-origin'
-            });
-            const folderTree = await response.json();
-
-            // Build folder tree UI
-            folderList.innerHTML = '';
-            const ul = document.createElement('ul');
-            ul.className = 'folder-tree';
-            ul.appendChild(createFolderTreeNode(folderTree));
-            folderList.appendChild(ul);
-
             selectedDestinationId = null;
             moveModal.classList.add('active');
+
+            // If we have cached tree, show it immediately
+            if (cachedFolderTree) {
+                folderList.innerHTML = '';
+                const ul = document.createElement('ul');
+                ul.className = 'folder-tree';
+                ul.appendChild(createFolderTreeNode(cachedFolderTree));
+                folderList.appendChild(ul);
+                lucide.createIcons();
+                return;
+            }
+
+            // Show loading state for first load
+            folderList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">Loading folders...</div>';
+
+            // Fetch folder tree in background
+            try {
+                const response = await fetch('{{ url_for("get_folder_tree") }}', {
+                    credentials: 'same-origin'
+                });
+                const folderTree = await response.json();
+                cachedFolderTree = folderTree; // Cache for next time
+
+                // Build folder tree UI
+                folderList.innerHTML = '';
+                const ul = document.createElement('ul');
+                ul.className = 'folder-tree';
+                ul.appendChild(createFolderTreeNode(folderTree));
+                folderList.appendChild(ul);
+
+                // Initialize Lucide icons in the folder tree
+                lucide.createIcons();
+            } catch (error) {
+                folderList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-danger);">Error loading folders. Please try again.</div>';
+                console.error('Failed to load folder tree:', error);
+            }
         });
 
         document.getElementById('confirm-move-btn').addEventListener('click', async () => {
@@ -361,6 +483,15 @@
                 alert('Please select a destination folder');
                 return;
             }
+
+            // Get the item's data before removing it
+            const movedItem = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
+            const itemData = movedItem ? {
+                id: movedItem.dataset.id,
+                name: movedItem.dataset.name,
+                is_folder: movedItem.dataset.isFolder === 'true',
+                is_attached: movedItem.querySelector('.file-item__icon, .hierarchy-item__icon')?.textContent === '📎'
+            } : null;
 
             const basePath = window.location.pathname.startsWith('/knowledgetree/') ? '/knowledgetree' : '';
             const response = await fetch(`${basePath}/api/node/${selectedItemId}/move`, {
@@ -371,8 +502,74 @@
             });
 
             if (response.ok) {
+                // Close modal
                 document.getElementById('move-modal').classList.remove('active');
-                window.location.reload();
+
+                // Invalidate cached folder tree
+                cachedFolderTree = null;
+
+                // Remove the moved item from DOM
+                if (movedItem) {
+                    // In hierarchy view, also remove the children container if it exists
+                    if (movedItem.classList.contains('hierarchy-item')) {
+                        const childrenDiv = movedItem.nextElementSibling;
+                        if (childrenDiv && childrenDiv.classList.contains('hierarchy-children')) {
+                            childrenDiv.remove();
+                        }
+                    }
+                    movedItem.remove();
+                }
+
+                // Try to add the item to destination if it's visible and expanded
+                if (itemData && currentView === 'hierarchy') {
+                    const destChildrenDiv = document.querySelector(`.hierarchy-children[data-parent-id="${selectedDestinationId}"]`);
+                    if (destChildrenDiv && destChildrenDiv.classList.contains('hierarchy-children--expanded')) {
+                        // Add the item to the expanded destination folder
+                        await createHierarchyItem(itemData, destChildrenDiv, 0);
+                        lucide.createIcons();
+                    }
+                }
+
+                // In grid/tree view, check if destination is the current folder
+                if (itemData && (currentView === 'grid' || currentView === 'tree') && selectedDestinationId === CURRENT_NODE_ID) {
+                    // Item was moved INTO the current folder, add it to the view
+                    const newItem = document.createElement('div');
+                    newItem.className = 'file-item';
+                    if (itemData.is_folder && itemData.is_attached) {
+                        newItem.innerHTML = `
+                            <span class="file-item__icon">📎</span>
+                            <span class="file-item__name">${itemData.name}</span>
+                        `;
+                    } else if (itemData.is_folder) {
+                        newItem.innerHTML = `
+                            <span class="file-item__icon">📁</span>
+                            <span class="file-item__name">${itemData.name}</span>
+                        `;
+                    } else {
+                        newItem.innerHTML = `
+                            <span class="file-item__icon">📄</span>
+                            <span class="file-item__name">${itemData.name}</span>
+                        `;
+                    }
+                    newItem.dataset.id = itemData.id;
+                    newItem.dataset.name = itemData.name;
+                    newItem.dataset.isFolder = itemData.is_folder;
+
+                    // Add click handler
+                    newItem.addEventListener('click', () => {
+                        if (itemData.is_folder) {
+                            const newPath = CURRENT_PATH ? `${CURRENT_PATH}/${encodeURIComponent(itemData.name)}` : encodeURIComponent(itemData.name);
+                            window.location.href = `{{ url_for('browse', path='') }}${newPath}`;
+                        } else {
+                            window.location.href = `{{ url_for('view_node', node_id='') }}${itemData.id}`;
+                        }
+                    });
+
+                    fileBrowserElement.appendChild(newItem);
+                }
+
+                // Clear selection
+                selectedItemId = null;
             } else {
                 const error = await response.json();
                 alert(`Error: ${error.error || 'Failed to move item'}`);
@@ -521,15 +718,16 @@
             const itemDiv = document.createElement('div');
             itemDiv.className = 'hierarchy-item';
             itemDiv.dataset.id = item.id;
+            itemDiv.dataset.name = item.name;
             itemDiv.dataset.isFolder = item.is_folder;
 
             // Toggle for folders
             const toggle = document.createElement('span');
             toggle.className = 'hierarchy-item__toggle';
             if (item.is_folder) {
-                toggle.textContent = '▶';
+                toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
             } else {
-                toggle.textContent = '';
+                toggle.innerHTML = '';
             }
 
             // Icon
@@ -569,7 +767,10 @@
 
                 if (isExpanded) {
                     childrenDiv.classList.remove('hierarchy-children--expanded');
-                    toggle.textContent = '▶';
+                    toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+                    lucide.createIcons();
+                    expandedFolders.delete(item.id); // Track collapsed state
+                    saveExpandedState();
                 } else {
                     // Load children if not loaded yet
                     if (childrenDiv.children.length === 0) {
@@ -591,7 +792,10 @@
                         }
                     }
                     childrenDiv.classList.add('hierarchy-children--expanded');
-                    toggle.textContent = '▼';
+                    toggle.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
+                    lucide.createIcons();
+                    expandedFolders.add(item.id); // Track expanded state
+                    saveExpandedState();
                 }
             });
 
@@ -605,7 +809,10 @@
 
                     if (isExpanded) {
                         childrenDiv.classList.remove('hierarchy-children--expanded');
-                        toggle.textContent = '▶';
+                        toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+                        lucide.createIcons();
+                        expandedFolders.delete(item.id); // Track collapsed state
+                        saveExpandedState();
                     } else {
                         // Load children if not loaded yet
                         if (childrenDiv.children.length === 0) {
@@ -627,7 +834,10 @@
                             }
                         }
                         childrenDiv.classList.add('hierarchy-children--expanded');
-                        toggle.textContent = '▼';
+                        toggle.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
+                        lucide.createIcons();
+                        expandedFolders.add(item.id); // Track expanded state
+                        saveExpandedState();
                     }
                 } else {
                     // For files: navigate to view
@@ -638,6 +848,23 @@
             container.appendChild(itemDiv);
             if (item.is_folder) {
                 container.appendChild(childrenDiv);
+
+                // Restore expanded state if this folder was previously expanded
+                if (expandedFolders.has(item.id)) {
+                    // Load children and expand
+                    const url = `${basePath}/api/node/${item.id}/children`;
+                    fetch(url, { credentials: 'same-origin' })
+                        .then(response => response.json())
+                        .then(children => {
+                            children.forEach(child => {
+                                createHierarchyItem(child, childrenDiv, level + 1);
+                            });
+                            childrenDiv.classList.add('hierarchy-children--expanded');
+                            toggle.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
+                            lucide.createIcons();
+                        })
+                        .catch(error => console.error('Failed to restore expanded state:', error));
+                }
             }
         }
 
@@ -658,12 +885,14 @@
                 // Restore original HTML if coming from hierarchy
                 if (previousView === 'hierarchy') {
                     fileBrowserElement.innerHTML = originalHTML;
+                    attachFileItemHandlers(); // Re-attach click handlers
                 }
                 viewGridBtn.classList.add('view-switcher__button--active');
             } else if (view === 'tree') {
                 // Restore original HTML if coming from hierarchy
                 if (previousView === 'hierarchy') {
                     fileBrowserElement.innerHTML = originalHTML;
+                    attachFileItemHandlers(); // Re-attach click handlers
                 }
                 fileBrowserElement.classList.add('file-browser--tree');
                 viewTreeBtn.classList.add('view-switcher__button--active');
@@ -671,6 +900,7 @@
                 fileBrowserElement.classList.add('file-browser--hierarchy');
                 viewHierarchyBtn.classList.add('view-switcher__button--active');
                 await buildHierarchyView();
+                lucide.createIcons(); // Initialize icons in hierarchy view
             }
 
             // Make visible after view is set

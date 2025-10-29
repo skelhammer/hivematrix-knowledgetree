@@ -60,14 +60,12 @@
     <div class="card">
         <div class="card__header">
             <h1 class="card__title" id="node-name">Loading...</h1>
-            <a href="{{ url_for('browse', path=parent_path) }}">
-                <button class="btn">
-                    <span class="btn__label">
-                        <i data-lucide="arrow-left" class="btn__icon"></i>
-                        Back to Dashboard
-                    </span>
-                </button>
-            </a>
+            <button class="btn" id="back-btn" data-parent-path="{{ parent_path }}">
+                <span class="btn__label">
+                    <i data-lucide="arrow-left" class="btn__icon"></i>
+                    Back to Dashboard
+                </span>
+            </button>
         </div>
     </div>
 
@@ -229,6 +227,16 @@
                         lucide.createIcons(); // Reinitialize icons
                     });
 
+                    // Auto-open edit mode if ?edit=true parameter is present (for new articles)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('edit') === 'true') {
+                        // Trigger edit mode automatically
+                        editBtn.click();
+                        // Clean up URL to remove the parameter
+                        const cleanUrl = window.location.pathname;
+                        window.history.replaceState({}, '', cleanUrl);
+                    }
+
                     // Cancel button click - hide editor, show content
                     cancelEditBtn.addEventListener('click', () => {
                         editorContainer.style.display = 'none';
@@ -389,6 +397,38 @@
         });
 
         loadNodeData();
+
+        // Back button handler - view-mode aware
+        document.getElementById('back-btn').addEventListener('click', async () => {
+            const parentPath = document.getElementById('back-btn').dataset.parentPath;
+
+            try {
+                // Check user's view preference from Codex
+                const response = await fetch('/codex/api/my/settings', {
+                    credentials: 'same-origin'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const viewPref = data.knowledgetree_view_preference || 'grid';
+
+                    // In hierarchy view, always return to root
+                    if (viewPref === 'hierarchy') {
+                        window.location.href = "{{ url_for('browse', path='') }}";
+                    } else {
+                        // In grid/tree view, go to parent folder
+                        window.location.href = `{{ url_for('browse', path='') }}${parentPath}`;
+                    }
+                } else {
+                    // Fallback to parent path if we can't get preference
+                    window.location.href = `{{ url_for('browse', path='') }}${parentPath}`;
+                }
+            } catch (error) {
+                console.error('Failed to get view preference:', error);
+                // Fallback to parent path
+                window.location.href = `{{ url_for('browse', path='') }}${parentPath}`;
+            }
+        });
 
         // Initialize Lucide icons
         lucide.createIcons();
