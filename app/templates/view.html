@@ -71,6 +71,22 @@
             filter: invert(1) brightness(2) contrast(1.2) !important;
         }
 
+        /* Force SVG paths and elements to be white */
+        [data-theme="dark"] .toastui-editor-toolbar svg path,
+        [data-theme="dark"] .toastui-editor-toolbar svg circle,
+        [data-theme="dark"] .toastui-editor-toolbar svg rect,
+        [data-theme="dark"] .toastui-editor-toolbar svg polygon,
+        [data-theme="dark"] .toastui-editor-toolbar svg line {
+            fill: #ffffff !important;
+            stroke: #ffffff !important;
+        }
+
+        /* Also target any nested SVG groups */
+        [data-theme="dark"] .toastui-editor-toolbar svg g {
+            fill: #ffffff !important;
+            stroke: #ffffff !important;
+        }
+
         /* Remove white/light borders around icon containers */
         [data-theme="dark"] .toastui-editor-toolbar-icons button::before,
         [data-theme="dark"] .toastui-editor-toolbar-icons button::after,
