@@ -35,11 +35,24 @@
             background-color: var(--color-surface) !important;
             color: var(--color-text) !important;
             border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
 
         [data-theme="dark"] .toastui-editor-toolbar-icons button:hover,
         [data-theme="dark"] .toastui-editor-mode-switch button:hover {
             background-color: var(--color-surface-hover) !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-toolbar-icons button:focus,
+        [data-theme="dark"] .toastui-editor-mode-switch button:focus {
+            background-color: var(--color-surface) !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
         }
 
         /* Make toolbar icons white/light */
@@ -95,19 +108,32 @@
             color: var(--color-text) !important;
         }
 
-        /* Tab buttons */
+        /* Tab buttons - Markdown/WYSIWYG */
         [data-theme="dark"] .toastui-editor-tabs {
-            background-color: var(--color-background) !important;
-            border-bottom-color: var(--color-border-medium) !important;
+            background-color: var(--color-surface) !important;
+            border-top-color: var(--color-border-medium) !important;
+            border-bottom: none !important;
         }
 
         [data-theme="dark"] .toastui-editor-tabs .tab-item {
-            background-color: transparent !important;
+            background-color: var(--color-surface) !important;
             color: var(--color-text-muted) !important;
-            border-color: var(--color-border-medium) !important;
+            border: none !important;
+            border-top: 2px solid transparent !important;
         }
 
         [data-theme="dark"] .toastui-editor-tabs .tab-item.active {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text) !important;
+            border-top: 2px solid var(--color-primary) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-mode-switch .tab-item {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text-muted) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-mode-switch .tab-item.active {
             background-color: var(--color-surface) !important;
             color: var(--color-text) !important;
         }
