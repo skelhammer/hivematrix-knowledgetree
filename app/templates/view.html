@@ -48,9 +48,8 @@
             opacity: 1 !important;
         }
 
-        /* Apply filter to button content/children */
-        [data-theme="dark"] .toastui-editor-toolbar-icons button *,
-        [data-theme="dark"] .toastui-editor-mode-switch button * {
+        /* Target the actual icon buttons with background images */
+        [data-theme="dark"] button.toastui-editor-toolbar-icons {
             filter: brightness(0) invert(1) !important;
             opacity: 1 !important;
         }
