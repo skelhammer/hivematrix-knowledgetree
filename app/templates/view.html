@@ -7,98 +7,10 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Dark mode support for ToastUI editor */
+        /* Keep toolbar light, only dark mode the editor content */
         [data-theme="dark"] .toastui-editor-defaultUI {
             background-color: var(--color-surface) !important;
             border-color: var(--color-border-medium) !important;
-        }
-
-        /* Toolbar - force dark background */
-        [data-theme="dark"] .toastui-editor-toolbar {
-            background-color: var(--color-surface) !important;
-            border-bottom-color: var(--color-border-medium) !important;
-        }
-
-        /* Toolbar item wrappers */
-        [data-theme="dark"] .toastui-editor-toolbar-group,
-        [data-theme="dark"] .toastui-editor-toolbar-item-wrapper {
-            background-color: var(--color-surface) !important;
-            border: none !important;
-        }
-
-        /* Remove any borders from toolbar items */
-        [data-theme="dark"] .toastui-editor-toolbar-item,
-        [data-theme="dark"] .toastui-editor-toolbar-item button {
-            border: none !important;
-            border-radius: 4px !important;
-        }
-
-        /* Toolbar buttons */
-        [data-theme="dark"] .toastui-editor-toolbar-icons,
-        [data-theme="dark"] .toastui-editor-mode-switch {
-            background-color: var(--color-surface) !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-toolbar-icons button,
-        [data-theme="dark"] .toastui-editor-mode-switch button {
-            background-color: transparent !important;
-            color: #ffffff !important;
-            border: none !important;
-            outline: none !important;
-            box-shadow: none !important;
-            opacity: 1 !important;
-        }
-
-        /* Target the actual icon buttons with background images */
-        [data-theme="dark"] button.toastui-editor-toolbar-icons {
-            filter: brightness(10) contrast(2) !important;
-            opacity: 1 !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-toolbar-icons button:hover,
-        [data-theme="dark"] .toastui-editor-mode-switch button:hover {
-            background-color: var(--color-surface-hover) !important;
-            border: none !important;
-            outline: none !important;
-            box-shadow: none !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-toolbar-icons button:focus,
-        [data-theme="dark"] .toastui-editor-mode-switch button:focus {
-            background-color: var(--color-surface) !important;
-            border: none !important;
-            outline: none !important;
-            box-shadow: none !important;
-        }
-
-
-        /* Remove white/light borders around icon containers */
-        [data-theme="dark"] .toastui-editor-toolbar-icons button::before,
-        [data-theme="dark"] .toastui-editor-toolbar-icons button::after,
-        [data-theme="dark"] .toastui-editor-mode-switch button::before,
-        [data-theme="dark"] .toastui-editor-mode-switch button::after {
-            display: none !important;
-        }
-
-        /* Force button images/icons to have no border */
-        [data-theme="dark"] .toastui-editor-toolbar button img,
-        [data-theme="dark"] .toastui-editor-toolbar button svg {
-            border: none !important;
-            outline: none !important;
-        }
-
-        /* Force all toolbar children to be dark and no borders */
-        [data-theme="dark"] .toastui-editor-toolbar * {
-            background-color: var(--color-surface) !important;
-            border-color: transparent !important;
-        }
-
-        /* Nuclear option - remove ALL borders in toolbar */
-        [data-theme="dark"] .toastui-editor-toolbar button,
-        [data-theme="dark"] .toastui-editor-toolbar span,
-        [data-theme="dark"] .toastui-editor-toolbar div {
-            border: 0 !important;
-            border-width: 0 !important;
-            border-style: none !important;
         }
 
         /* Editor content areas */
@@ -143,35 +55,6 @@
             color: var(--color-text) !important;
         }
 
-        /* Tab buttons - Markdown/WYSIWYG */
-        [data-theme="dark"] .toastui-editor-tabs {
-            background-color: var(--color-surface) !important;
-            border-top-color: var(--color-border-medium) !important;
-            border-bottom: none !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-tabs .tab-item {
-            background-color: var(--color-surface) !important;
-            color: var(--color-text-muted) !important;
-            border: none !important;
-            border-top: 2px solid transparent !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-tabs .tab-item.active {
-            background-color: var(--color-surface) !important;
-            color: var(--color-text) !important;
-            border-top: 2px solid var(--color-primary) !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-mode-switch .tab-item {
-            background-color: var(--color-surface) !important;
-            color: var(--color-text-muted) !important;
-        }
-
-        [data-theme="dark"] .toastui-editor-mode-switch .tab-item.active {
-            background-color: var(--color-surface) !important;
-            color: var(--color-text) !important;
-        }
 
         .editor-actions {
             display: flex;
