@@ -74,7 +74,7 @@
     <div class="card">
         <div class="card__header">
             <h2 class="card__title">Content</h2>
-            <div class="button-group">
+            <div class="button-group" id="view-actions">
                 <button id="export-context-btn" class="btn">
                     <span class="btn__label">
                         <i data-lucide="download" class="btn__icon"></i>
@@ -88,26 +88,26 @@
                     </span>
                 </button>
             </div>
+            <div class="button-group" id="edit-actions" style="display: none;">
+                <button id="cancel-edit-btn" class="btn">
+                    <span class="btn__label">
+                        <i data-lucide="x" class="btn__icon"></i>
+                        Cancel
+                    </span>
+                </button>
+                <button id="save-btn" class="btn btn--primary">
+                    <span class="btn__label">
+                        <i data-lucide="save" class="btn__icon"></i>
+                        Save Content
+                    </span>
+                </button>
+            </div>
         </div>
         <div class="card__body">
             <div id="content-display"></div>
 
             <div id="editor-container" style="display: none;">
                 <div id="editor"></div>
-                <div class="button-group" style="justify-content: flex-end; margin-top: 1rem;">
-                    <button id="cancel-edit-btn" class="btn">
-                        <span class="btn__label">
-                            <i data-lucide="x" class="btn__icon"></i>
-                            Cancel
-                        </span>
-                    </button>
-                    <button id="save-btn" class="btn btn--primary">
-                        <span class="btn__label">
-                            <i data-lucide="save" class="btn__icon"></i>
-                            Save Content
-                        </span>
-                    </button>
-                </div>
             </div>
         </div>
     </div>
@@ -194,15 +194,13 @@
                 // Editor setup (only if not read-only)
                 const editorContainer = document.getElementById('editor-container');
                 const contentDisplay = document.getElementById('content-display');
+                const viewActions = document.getElementById('view-actions');
+                const editActions = document.getElementById('edit-actions');
                 const editBtn = document.getElementById('edit-btn');
                 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
-                // Hide edit button initially
-                editBtn.style.display = 'none';
-
                 if (!data.read_only) {
-                    // Show edit button
-                    editBtn.style.display = '';
+                    // View actions visible by default, edit actions hidden
 
                     // Initialize editor
                     editor = new toastui.Editor({
@@ -226,7 +224,8 @@
                     editBtn.addEventListener('click', () => {
                         contentDisplay.style.display = 'none';
                         editorContainer.style.display = 'block';
-                        editBtn.parentElement.style.display = 'none';
+                        viewActions.style.display = 'none';
+                        editActions.style.display = '';
                         lucide.createIcons(); // Reinitialize icons
                     });
 
@@ -234,7 +233,8 @@
                     cancelEditBtn.addEventListener('click', () => {
                         editorContainer.style.display = 'none';
                         contentDisplay.style.display = 'block';
-                        editBtn.parentElement.style.display = '';
+                        viewActions.style.display = '';
+                        editActions.style.display = 'none';
                         // Reset editor content to original
                         editor.setMarkdown(data.content || '');
                         lucide.createIcons(); // Reinitialize icons
@@ -257,7 +257,8 @@
                         // Switch back to view mode
                         editorContainer.style.display = 'none';
                         contentDisplay.style.display = 'block';
-                        editBtn.parentElement.style.display = '';
+                        viewActions.style.display = '';
+                        editActions.style.display = 'none';
                         lucide.createIcons(); // Reinitialize icons
                     });
                 }
