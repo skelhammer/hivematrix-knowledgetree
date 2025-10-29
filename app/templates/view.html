@@ -70,14 +70,18 @@
             <div class="header-toolbar header-toolbar--space-between">
                 <a href="{{ url_for('browse', path=parent_path) }}">
                     <button class="btn">
-                        <i data-lucide="arrow-left"></i>
-                        <span class="btn__label">Back</span>
+                        <span class="btn__label">
+                            <i data-lucide="arrow-left" class="btn__icon"></i>
+                            Back
+                        </span>
                     </button>
                 </a>
                 <h1 class="card__title u-m-0" id="node-name">Loading...</h1>
                 <button id="export-context-btn" class="btn btn--primary">
-                    <i data-lucide="download"></i>
-                    <span class="btn__label">Export Context</span>
+                    <span class="btn__label">
+                        <i data-lucide="download" class="btn__icon"></i>
+                        Export Context
+                    </span>
                 </button>
             </div>
         </div>
@@ -88,8 +92,10 @@
             <div class="header-toolbar header-toolbar--space-between">
                 <h2 class="card__title">Content</h2>
                 <button id="edit-btn" class="btn" style="display: none;">
-                    <i data-lucide="edit"></i>
-                    <span class="btn__label">Edit Content</span>
+                    <span class="btn__label">
+                        <i data-lucide="edit" class="btn__icon"></i>
+                        Edit Content
+                    </span>
                 </button>
             </div>
         </div>
@@ -100,12 +106,16 @@
                 <div id="editor"></div>
                 <div class="editor-actions">
                     <button id="save-btn" class="btn btn--primary">
-                        <i data-lucide="save"></i>
-                        <span class="btn__label">Save Content</span>
+                        <span class="btn__label">
+                            <i data-lucide="save" class="btn__icon"></i>
+                            Save Content
+                        </span>
                     </button>
                     <button id="cancel-edit-btn" class="btn">
-                        <i data-lucide="x"></i>
-                        <span class="btn__label">Cancel</span>
+                        <span class="btn__label">
+                            <i data-lucide="x" class="btn__icon"></i>
+                            Cancel
+                        </span>
                     </button>
                 </div>
             </div>
@@ -121,8 +131,10 @@
             <div class="u-mt-2">
                 <input type="file" id="file-upload-input">
                 <button id="upload-btn" class="btn">
-                    <i data-lucide="upload"></i>
-                    <span class="btn__label">Upload File</span>
+                    <span class="btn__label">
+                        <i data-lucide="upload" class="btn__icon"></i>
+                        Upload File
+                    </span>
                 </button>
             </div>
         </div>
@@ -141,8 +153,10 @@
             </div>
             <div class="modal__footer">
                 <button id="generate-context-btn" class="btn btn--primary">
-                    <i data-lucide="copy"></i>
-                    <span class="btn__label">Generate & Copy Context</span>
+                    <span class="btn__label">
+                        <i data-lucide="copy" class="btn__icon"></i>
+                        Generate & Copy Context
+                    </span>
                 </button>
             </div>
         </div>
