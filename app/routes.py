@@ -322,7 +322,10 @@ def get_node(node_id):
         if result:
             data = dict(result)
             content = data.get('content') or ''
-            data['content_html'] = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br', 'markdown.extensions.sane_lists', 'pymdownx.tilde'])
+            # Convert ~~strikethrough~~ to <del>strikethrough</del>
+            import re
+            content = re.sub(r'~~(.*?)~~', r'<del>\1</del>', content)
+            data['content_html'] = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
             data['files'] = [f for f in data.get('files', []) if f['id'] is not None]
             return jsonify(data)
         else:
