@@ -249,7 +249,15 @@
                         initialEditType: 'wysiwyg',
                         previewStyle: 'tab',
                         usageStatistics: false,
-                        initialValue: data.content || ''
+                        initialValue: data.content || '',
+                        toolbarItems: [
+                            ['heading', 'bold', 'italic', 'strike'],
+                            ['hr', 'quote'],
+                            ['ul', 'ol', 'task', 'indent', 'outdent'],
+                            ['table', 'image', 'link'],
+                            ['code', 'codeblock'],
+                            ['scrollSync']
+                        ]
                     });
 
                     // Edit button click - show editor, hide content
