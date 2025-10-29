@@ -7,53 +7,104 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         /* Dark mode support for ToastUI editor */
-        [data-theme="dark"] .toastui-editor-defaultUI,
-        [data-theme="dark"] .toastui-editor-toolbar,
+        [data-theme="dark"] .toastui-editor-defaultUI {
+            background-color: var(--color-surface) !important;
+            border-color: var(--color-border-medium) !important;
+        }
+
+        /* Toolbar */
+        [data-theme="dark"] .toastui-editor-toolbar {
+            background-color: var(--color-background) !important;
+            border-bottom-color: var(--color-border-medium) !important;
+        }
+
+        /* Toolbar buttons */
         [data-theme="dark"] .toastui-editor-toolbar-icons,
+        [data-theme="dark"] .toastui-editor-mode-switch {
+            background-color: transparent !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-toolbar-icons button,
+        [data-theme="dark"] .toastui-editor-mode-switch button {
+            background-color: transparent !important;
+            color: var(--color-text) !important;
+            border: none !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-toolbar-icons button:hover,
+        [data-theme="dark"] .toastui-editor-mode-switch button:hover {
+            background-color: var(--color-surface-hover) !important;
+        }
+
+        /* Make toolbar icons white/light */
+        [data-theme="dark"] .toastui-editor-toolbar-icons svg,
+        [data-theme="dark"] .toastui-editor-mode-switch svg {
+            filter: invert(1) brightness(0.9) !important;
+        }
+
+        /* Editor content areas */
         [data-theme="dark"] .toastui-editor-main-container,
         [data-theme="dark"] .toastui-editor-md-container,
-        [data-theme="dark"] .toastui-editor-ww-container {
+        [data-theme="dark"] .toastui-editor-ww-container,
+        [data-theme="dark"] .toastui-editor-contents,
+        [data-theme="dark"] .ProseMirror {
             background-color: var(--color-surface) !important;
             color: var(--color-text) !important;
         }
 
-        [data-theme="dark"] .toastui-editor-contents {
-            background-color: var(--color-surface) !important;
+        /* All text elements in editor */
+        [data-theme="dark"] .toastui-editor-contents *,
+        [data-theme="dark"] .ProseMirror * {
             color: var(--color-text) !important;
         }
 
-        [data-theme="dark"] .toastui-editor-contents p,
-        [data-theme="dark"] .toastui-editor-contents h1,
-        [data-theme="dark"] .toastui-editor-contents h2,
-        [data-theme="dark"] .toastui-editor-contents h3,
-        [data-theme="dark"] .toastui-editor-contents h4,
-        [data-theme="dark"] .toastui-editor-contents h5,
-        [data-theme="dark"] .toastui-editor-contents h6,
-        [data-theme="dark"] .toastui-editor-contents li,
-        [data-theme="dark"] .toastui-editor-contents td,
-        [data-theme="dark"] .toastui-editor-contents th {
+        /* Code blocks */
+        [data-theme="dark"] .toastui-editor-contents pre,
+        [data-theme="dark"] .toastui-editor-contents code {
+            background-color: var(--color-background) !important;
             color: var(--color-text) !important;
         }
 
+        /* Dividers */
         [data-theme="dark"] .toastui-editor-md-splitter,
         [data-theme="dark"] .toastui-editor-toolbar-divider {
             background-color: var(--color-border-medium) !important;
         }
 
-        [data-theme="dark"] .toastui-editor-mode-switch,
-        [data-theme="dark"] .toastui-editor-toolbar-item-wrapper button {
+        /* Dropdowns and popups */
+        [data-theme="dark"] .toastui-editor-popup,
+        [data-theme="dark"] .toastui-editor-dropdown-toolbar {
             background-color: var(--color-surface) !important;
-            color: var(--color-text) !important;
             border-color: var(--color-border-medium) !important;
         }
 
-        [data-theme="dark"] .toastui-editor-toolbar-item-wrapper button:hover {
-            background-color: var(--color-surface-hover) !important;
+        [data-theme="dark"] .toastui-editor-popup-body,
+        [data-theme="dark"] .toastui-editor-dropdown-toolbar button {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text) !important;
+        }
+
+        /* Tab buttons */
+        [data-theme="dark"] .toastui-editor-tabs {
+            background-color: var(--color-background) !important;
+            border-bottom-color: var(--color-border-medium) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-tabs .tab-item {
+            background-color: transparent !important;
+            color: var(--color-text-muted) !important;
+            border-color: var(--color-border-medium) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-tabs .tab-item.active {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text) !important;
         }
 
         .editor-actions {
             display: flex;
             justify-content: flex-end;
+            gap: 0.5rem;
             margin-top: 1rem;
         }
     </style>
