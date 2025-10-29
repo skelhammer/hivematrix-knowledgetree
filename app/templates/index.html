@@ -497,10 +497,11 @@
 
         // Build hierarchy view
         async function buildHierarchyView() {
-            fileBrowserElement.innerHTML = '';
-
-            // Get all items from the current view
+            // Get all items from the current view BEFORE clearing
             const fileItems = document.querySelectorAll('.file-item');
+
+            // Now clear the content
+            fileBrowserElement.innerHTML = '';
 
             // Convert existing file items to hierarchy items
             for (const fileItem of fileItems) {
