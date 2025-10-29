@@ -59,18 +59,18 @@
                            autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
                 </div>
                 <div class="view-switcher">
-                    <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Grid View">
+                    <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Icons">
                         <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
                     </button>
-                    <button class="view-switcher__button" id="view-tree" title="List View">
+                    <button class="view-switcher__button" id="view-tree" title="Compact">
                         <i data-lucide="list" style="width: 20px; height: 20px;"></i>
                     </button>
-                    <button class="view-switcher__button" id="view-hierarchy" title="Hierarchy View">
+                    <button class="view-switcher__button" id="view-hierarchy" title="Tree">
                         <i data-lucide="folder-tree" style="width: 20px; height: 20px;"></i>
                     </button>
                 </div>
             </div>
-            <div id="file-browser" class="file-browser">
+            <div id="file-browser" class="file-browser" style="opacity: 0;">
                 {% for item in items %}
                     <div class="file-item {% if item.read_only %}file-item--read-only{% endif %}"
                          data-name="{{ item.name }}"
@@ -461,6 +461,7 @@
         const viewTreeBtn = document.getElementById('view-tree');
         const viewHierarchyBtn = document.getElementById('view-hierarchy');
         let currentView = 'grid'; // Default
+        let originalHTML = fileBrowserElement.innerHTML; // Save original HTML for switching back
 
         // Load user's view preference from Codex
         async function loadViewPreference() {
@@ -471,10 +472,12 @@
                 if (response.ok) {
                     const data = await response.json();
                     const savedView = data.knowledgetree_view_preference || 'grid';
-                    setView(savedView, false); // Don't save on initial load
+                    await setView(savedView, false); // Don't save on initial load
                 }
             } catch (error) {
                 console.error('Failed to load view preference:', error);
+                // Show content even if preference load fails
+                fileBrowserElement.style.opacity = '1';
             }
         }
 
@@ -497,18 +500,19 @@
             fileBrowserElement.innerHTML = '';
 
             // Get all items from the current view
-            const items = document.querySelectorAll('.file-item');
+            const fileItems = document.querySelectorAll('.file-item');
 
-            // Rebuild from template data
-            {% for item in items %}
-            await createHierarchyItem({
-                id: '{{ item.id }}',
-                name: '{{ item.name }}',
-                is_folder: {{ item.is_folder|lower }},
-                is_attached: {{ item.is_attached|lower }},
-                read_only: {{ item.read_only|lower }}
-            }, fileBrowserElement);
-            {% endfor %}
+            // Convert existing file items to hierarchy items
+            for (const fileItem of fileItems) {
+                const item = {
+                    id: fileItem.dataset.id,
+                    name: fileItem.dataset.name,
+                    is_folder: fileItem.dataset.isFolder === 'true',
+                    is_attached: fileItem.querySelector('.file-item__icon').textContent === '📎',
+                    read_only: fileItem.classList.contains('file-item--read-only')
+                };
+                await createHierarchyItem(item, fileBrowserElement);
+            }
         }
 
         async function createHierarchyItem(item, container, level = 0) {
@@ -595,7 +599,7 @@
         }
 
         // Set the view (grid, tree, or hierarchy)
-        function setView(view, save = true) {
+        async function setView(view, save = true) {
             currentView = view;
 
             // Remove all view classes
@@ -607,15 +611,26 @@
             viewHierarchyBtn.classList.remove('view-switcher__button--active');
 
             if (view === 'grid') {
+                // Restore original HTML if coming from hierarchy
+                if (currentView === 'hierarchy') {
+                    fileBrowserElement.innerHTML = originalHTML;
+                }
                 viewGridBtn.classList.add('view-switcher__button--active');
             } else if (view === 'tree') {
+                // Restore original HTML if coming from hierarchy
+                if (currentView === 'hierarchy') {
+                    fileBrowserElement.innerHTML = originalHTML;
+                }
                 fileBrowserElement.classList.add('file-browser--tree');
                 viewTreeBtn.classList.add('view-switcher__button--active');
             } else if (view === 'hierarchy') {
                 fileBrowserElement.classList.add('file-browser--hierarchy');
                 viewHierarchyBtn.classList.add('view-switcher__button--active');
-                buildHierarchyView();
+                await buildHierarchyView();
             }
+
+            // Make visible after view is set
+            fileBrowserElement.style.opacity = '1';
 
             if (save) {
                 saveViewPreference(view);
