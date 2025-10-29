@@ -322,7 +322,7 @@ def get_node(node_id):
         if result:
             data = dict(result)
             content = data.get('content') or ''
-            data['content_html'] = markdown.markdown(content, extensions=['fenced_code', 'tables'])
+            data['content_html'] = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
             data['files'] = [f for f in data.get('files', []) if f['id'] is not None]
             return jsonify(data)
         else:
