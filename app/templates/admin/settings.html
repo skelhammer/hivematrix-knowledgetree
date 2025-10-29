@@ -8,11 +8,14 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <div class="header-toolbar header-toolbar--space-between">
-                <h1 class="card__title">KnowledgeTree Admin Settings</h1>
+            <h1 class="card__title">KnowledgeTree Admin Settings</h1>
+            <div class="card__header-actions">
                 <a href="{{ url_for('browse', path='') }}">
                     <button class="btn">
-                        <span class="btn__label">← Back to Dashboard</span>
+                        <span class="btn__label">
+                            <i data-lucide="arrow-left" class="btn__icon"></i>
+                            Back to Dashboard
+                        </span>
                     </button>
                 </a>
             </div>
