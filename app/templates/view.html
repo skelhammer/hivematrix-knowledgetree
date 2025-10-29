@@ -45,6 +45,8 @@
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
+            /* Force icons to be white if they're background images */
+            filter: brightness(0) invert(1) !important;
         }
 
         [data-theme="dark"] .toastui-editor-toolbar-icons button:hover,
