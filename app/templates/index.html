@@ -49,13 +49,23 @@
             </div>
         </div>
         <div class="card__body u-p-2">
-            <div class="input-group u-mb-2" style="width: 450px;">
-                <select id="search-scope" class="form-group__input" style="width: 150px;">
-                    <option value="current">Current Folder</option>
-                    <option value="all">All Items</option>
-                </select>
-                <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
-                       autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
+            <div class="u-flex" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="input-group" style="width: 450px;">
+                    <select id="search-scope" class="form-group__input" style="width: 150px;">
+                        <option value="current">Current Folder</option>
+                        <option value="all">All Items</option>
+                    </select>
+                    <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
+                           autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
+                </div>
+                <div class="view-switcher">
+                    <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Grid View">
+                        <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
+                    </button>
+                    <button class="view-switcher__button" id="view-tree" title="Tree View">
+                        <i data-lucide="list" style="width: 20px; height: 20px;"></i>
+                    </button>
+                </div>
             </div>
             <div id="file-browser" class="file-browser">
                 {% for item in items %}
@@ -441,6 +451,68 @@
                 searchResults.classList.remove('dropdown--visible');
             }
         });
+
+        // View switcher functionality
+        const fileBrowserElement = document.getElementById('file-browser');
+        const viewGridBtn = document.getElementById('view-grid');
+        const viewTreeBtn = document.getElementById('view-tree');
+        let currentView = 'grid'; // Default
+
+        // Load user's view preference from Codex
+        async function loadViewPreference() {
+            try {
+                const response = await fetch('/codex/api/my/settings', {
+                    credentials: 'same-origin'
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const savedView = data.knowledgetree_view_preference || 'grid';
+                    setView(savedView, false); // Don't save on initial load
+                }
+            } catch (error) {
+                console.error('Failed to load view preference:', error);
+            }
+        }
+
+        // Save view preference to Codex
+        async function saveViewPreference(view) {
+            try {
+                await fetch('/codex/api/my/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ knowledgetree_view_preference: view })
+                });
+            } catch (error) {
+                console.error('Failed to save view preference:', error);
+            }
+        }
+
+        // Set the view (grid or tree)
+        function setView(view, save = true) {
+            currentView = view;
+
+            if (view === 'grid') {
+                fileBrowserElement.classList.remove('file-browser--tree');
+                viewGridBtn.classList.add('view-switcher__button--active');
+                viewTreeBtn.classList.remove('view-switcher__button--active');
+            } else {
+                fileBrowserElement.classList.add('file-browser--tree');
+                viewTreeBtn.classList.add('view-switcher__button--active');
+                viewGridBtn.classList.remove('view-switcher__button--active');
+            }
+
+            if (save) {
+                saveViewPreference(view);
+            }
+        }
+
+        // View switcher button handlers
+        viewGridBtn.addEventListener('click', () => setView('grid'));
+        viewTreeBtn.addEventListener('click', () => setView('tree'));
+
+        // Load preference on page load
+        loadViewPreference();
 
         // Initialize Lucide icons
         lucide.createIcons();
