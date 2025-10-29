@@ -49,13 +49,13 @@
             </div>
         </div>
         <div class="card__body u-p-2">
-            <div class="u-flex u-flex-gap-2 u-mb-2">
-                <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
-                       autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
+            <div class="input-group u-mb-2" style="width: 450px;">
                 <select id="search-scope" class="form-group__input" style="width: 150px;">
                     <option value="current">Current Folder</option>
                     <option value="all">All Items</option>
                 </select>
+                <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
+                       autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
             </div>
             <div id="file-browser" class="file-browser">
                 {% for item in items %}
