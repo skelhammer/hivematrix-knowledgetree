@@ -4,6 +4,59 @@
     <meta charset="UTF-8">
     <title>View Item - KnowledgeTree</title>
     <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Dark mode support for ToastUI editor */
+        [data-theme="dark"] .toastui-editor-defaultUI,
+        [data-theme="dark"] .toastui-editor-toolbar,
+        [data-theme="dark"] .toastui-editor-toolbar-icons,
+        [data-theme="dark"] .toastui-editor-main-container,
+        [data-theme="dark"] .toastui-editor-md-container,
+        [data-theme="dark"] .toastui-editor-ww-container {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-contents {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-contents p,
+        [data-theme="dark"] .toastui-editor-contents h1,
+        [data-theme="dark"] .toastui-editor-contents h2,
+        [data-theme="dark"] .toastui-editor-contents h3,
+        [data-theme="dark"] .toastui-editor-contents h4,
+        [data-theme="dark"] .toastui-editor-contents h5,
+        [data-theme="dark"] .toastui-editor-contents h6,
+        [data-theme="dark"] .toastui-editor-contents li,
+        [data-theme="dark"] .toastui-editor-contents td,
+        [data-theme="dark"] .toastui-editor-contents th {
+            color: var(--color-text) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-md-splitter,
+        [data-theme="dark"] .toastui-editor-toolbar-divider {
+            background-color: var(--color-border-medium) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-mode-switch,
+        [data-theme="dark"] .toastui-editor-toolbar-item-wrapper button {
+            background-color: var(--color-surface) !important;
+            color: var(--color-text) !important;
+            border-color: var(--color-border-medium) !important;
+        }
+
+        [data-theme="dark"] .toastui-editor-toolbar-item-wrapper button:hover {
+            background-color: var(--color-surface-hover) !important;
+        }
+
+        .editor-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 1rem;
+        }
+    </style>
 </head>
 <body>
     <div class="card">
@@ -11,11 +64,13 @@
             <div class="header-toolbar header-toolbar--space-between">
                 <a href="{{ url_for('browse', path=parent_path) }}">
                     <button class="btn">
-                        <span class="btn__label">← Back</span>
+                        <i data-lucide="arrow-left"></i>
+                        <span class="btn__label">Back</span>
                     </button>
                 </a>
                 <h1 class="card__title u-m-0" id="node-name">Loading...</h1>
                 <button id="export-context-btn" class="btn btn--primary">
+                    <i data-lucide="download"></i>
                     <span class="btn__label">Export Context</span>
                 </button>
             </div>
@@ -32,9 +87,12 @@
             <div id="editor-container" class="u-mt-4">
                 <h3>Edit Content</h3>
                 <div id="editor"></div>
-                <button id="save-btn" class="btn btn--primary u-mt-2">
-                    <span class="btn__label">Save Content</span>
-                </button>
+                <div class="editor-actions">
+                    <button id="save-btn" class="btn btn--primary">
+                        <i data-lucide="save"></i>
+                        <span class="btn__label">Save Content</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -48,13 +106,13 @@
             <div class="u-mt-2">
                 <input type="file" id="file-upload-input">
                 <button id="upload-btn" class="btn">
+                    <i data-lucide="upload"></i>
                     <span class="btn__label">Upload File</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Context Export Modal -->
     <div id="context-modal" class="modal">
         <div class="modal__dialog">
             <div class="modal__header">
@@ -68,6 +126,7 @@
             </div>
             <div class="modal__footer">
                 <button id="generate-context-btn" class="btn btn--primary">
+                    <i data-lucide="copy"></i>
                     <span class="btn__label">Generate & Copy Context</span>
                 </button>
             </div>
@@ -270,6 +329,9 @@
         });
 
         loadNodeData();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>
