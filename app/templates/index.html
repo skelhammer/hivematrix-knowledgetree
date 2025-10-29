@@ -7,7 +7,7 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="header-toolbar header-toolbar--space-between">
                 <h1 class="card__title">KnowledgeTree - Documentation & Knowledge Base</h1>
                 {% if user.permission_level == 'admin' %}
                 <a href="{{ url_for('admin_settings') }}">
@@ -26,7 +26,7 @@
 
     <div class="card">
         <div class="card__header">
-            <div style="display: flex; align-items: center; gap: 1rem;">
+            <div class="header-toolbar">
                 {% if current_path %}
                     <a href="{{ url_for('browse', path=parent_path) }}">
                         <button class="btn">
@@ -35,60 +35,60 @@
                     </a>
                 {% endif %}
 
-                <div style="flex-grow: 1;">
+                <div class="breadcrumb">
                     <strong>Path:</strong>
-                    <a href="{{ url_for('browse', path='') }}">root</a>
+                    <span class="breadcrumb__separator"></span>
+                    <a href="{{ url_for('browse', path='') }}" class="breadcrumb__link">root</a>
                     {% for name in breadcrumb_names[1:] %}
                         {% set path_slice = breadcrumb_names[1:loop.index+1] %}
-                        / <a href="{{ url_for('browse', path=(path_slice | map('quote_plus') | join('/'))) }}">{{ name }}</a>
+                        <span class="breadcrumb__separator">/</span>
+                        <a href="{{ url_for('browse', path=(path_slice | map('quote_plus') | join('/'))) }}" class="breadcrumb__link">{{ name }}</a>
                     {% endfor %}
                 </div>
 
-                <input type="search" id="search-input" placeholder="Search..."
-                       autocomplete="off" data-start-node="{{ current_node_id }}"
-                       style="padding: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; width: 250px;">
+                <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
+                       autocomplete="off" data-start-node="{{ current_node_id }}">
             </div>
         </div>
     </div>
 
     <div class="card" id="file-browser-container">
         <div class="card__body">
-            <div id="file-browser" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1.5rem; padding: 1rem;">
+            <div id="file-browser" class="file-browser">
                 {% for item in items %}
-                    <div class="file-item {% if item.read_only %}read-only{% endif %}"
+                    <div class="file-item {% if item.read_only %}file-item--read-only{% endif %}"
                          data-name="{{ item.name }}"
                          data-id="{{ item.id }}"
-                         data-is-folder="{{ item.is_folder|lower }}"
-                         style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1rem; border-radius: 8px; cursor: pointer; border: 2px solid transparent;">
+                         data-is-folder="{{ item.is_folder|lower }}">
                         {% if item.is_folder %}
                             {% if item.is_attached %}
-                                <span style="font-size: 48px;">📎</span>
+                                <span class="file-item__icon">📎</span>
                             {% else %}
-                                <span style="font-size: 48px;">📁</span>
+                                <span class="file-item__icon">📁</span>
                             {% endif %}
                         {% else %}
-                            <span style="font-size: 48px;">📄</span>
+                            <span class="file-item__icon">📄</span>
                         {% endif %}
-                        <span class="name" style="word-break: break-all; font-size: 0.9rem; margin-top: 0.5rem;">{{ item.name }}</span>
+                        <span class="file-item__name">{{ item.name }}</span>
                     </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <div id="context-menu" style="display: none; position: absolute; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding: 8px 0; z-index: 1000;">
-        <ul style="list-style: none; margin: 0; padding: 0;">
-            <li id="context-open" style="padding: 10px 20px; cursor: pointer;">Open</li>
-            <li id="context-rename" style="padding: 10px 20px; cursor: pointer;">Rename</li>
-            <li id="context-delete" style="padding: 10px 20px; cursor: pointer;">Delete</li>
-            <hr style="margin: 5px 0; border: none; border-top: 1px solid #dee2e6;">
-            <li id="context-new-folder" style="padding: 10px 20px; cursor: pointer;">New Folder</li>
-            <li id="context-new-attached" style="padding: 10px 20px; cursor: pointer;">New Attached Folder</li>
-            <li id="context-new-article" style="padding: 10px 20px; cursor: pointer;">New Article</li>
+    <div id="context-menu" class="context-menu">
+        <ul class="context-menu__list">
+            <li id="context-open" class="context-menu__item">Open</li>
+            <li id="context-rename" class="context-menu__item">Rename</li>
+            <li id="context-delete" class="context-menu__item">Delete</li>
+            <hr class="context-menu__separator">
+            <li id="context-new-folder" class="context-menu__item">New Folder</li>
+            <li id="context-new-attached" class="context-menu__item">New Attached Folder</li>
+            <li id="context-new-article" class="context-menu__item">New Article</li>
         </ul>
     </div>
 
-    <div id="search-results" style="display: none; position: absolute; background: white; border: 1px solid #dee2e6; border-radius: 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 1001; max-height: 400px; overflow-y: auto;"></div>
+    <div id="search-results" class="dropdown"></div>
 
     <script>
         const CURRENT_PATH = "{{ current_path }}";
@@ -122,8 +122,8 @@
             const targetItem = e.target.closest('.file-item');
 
             if (targetItem) {
-                document.querySelectorAll('.file-item').forEach(el => el.style.backgroundColor = '');
-                targetItem.style.backgroundColor = '#e9ecef';
+                document.querySelectorAll('.file-item').forEach(el => el.classList.remove('file-item--selected'));
+                targetItem.classList.add('file-item--selected');
                 selectedItemId = targetItem.dataset.id;
             } else {
                 selectedItemId = null;
@@ -214,7 +214,7 @@
             searchDebounceTimer = setTimeout(async () => {
                 const query = searchInput.value.trim();
                 if (query.length < 2) {
-                    searchResults.style.display = 'none';
+                    searchResults.classList.remove('dropdown--visible');
                     return;
                 }
 
@@ -225,12 +225,12 @@
 
                 searchResults.innerHTML = '';
                 if (items.length === 0) {
-                    searchResults.innerHTML = '<div style="padding: 10px;">No results found.</div>';
+                    searchResults.innerHTML = '<div class="dropdown__empty">No results found.</div>';
                 } else {
                     items.forEach(item => {
                         const div = document.createElement('div');
-                        div.style.cssText = 'padding: 10px; cursor: pointer; border-bottom: 1px solid #dee2e6;';
-                        div.innerHTML = `<strong>${item.name}</strong><br><small style="color: #6c757d;">${item.folder_path}</small>`;
+                        div.className = 'dropdown__item';
+                        div.innerHTML = `<div class="dropdown__item-title">${item.name}</div><div class="dropdown__item-subtitle">${item.folder_path}</div>`;
                         div.addEventListener('click', () => {
                             if (item.is_folder) {
                                 window.location.href = `{{ url_for('browse', path='') }}${item.folder_path}`;
@@ -246,13 +246,13 @@
                 searchResults.style.top = `${rect.bottom + window.scrollY}px`;
                 searchResults.style.left = `${rect.left + window.scrollX}px`;
                 searchResults.style.width = `${rect.width}px`;
-                searchResults.style.display = 'block';
+                searchResults.classList.add('dropdown--visible');
             }, 300);
         });
 
         document.addEventListener('click', (e) => {
             if (!searchResults.contains(e.target) && e.target !== searchInput) {
-                searchResults.style.display = 'none';
+                searchResults.classList.remove('dropdown--visible');
             }
         });
     </script>

@@ -8,13 +8,13 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="header-toolbar header-toolbar--space-between">
                 <a href="{{ url_for('browse', path=parent_path) }}">
                     <button class="btn">
                         <span class="btn__label">← Back</span>
                     </button>
                 </a>
-                <h1 class="card__title" id="node-name" style="margin: 0;">Loading...</h1>
+                <h1 class="card__title u-m-0" id="node-name">Loading...</h1>
                 <button id="export-context-btn" class="btn btn--primary">
                     <span class="btn__label">Export Context</span>
                 </button>
@@ -29,10 +29,10 @@
         <div class="card__body">
             <div id="content-display"></div>
 
-            <div id="editor-container" style="margin-top: 2rem;">
+            <div id="editor-container" class="u-mt-4">
                 <h3>Edit Content</h3>
                 <div id="editor"></div>
-                <button id="save-btn" class="btn btn--primary" style="margin-top: 1rem;">
+                <button id="save-btn" class="btn btn--primary u-mt-2">
                     <span class="btn__label">Save Content</span>
                 </button>
             </div>
@@ -45,7 +45,7 @@
         </div>
         <div class="card__body">
             <div id="file-list"></div>
-            <div style="margin-top: 1rem;">
+            <div class="u-mt-2">
                 <input type="file" id="file-upload-input">
                 <button id="upload-btn" class="btn">
                     <span class="btn__label">Upload File</span>
@@ -55,16 +55,22 @@
     </div>
 
     <!-- Context Export Modal -->
-    <div id="context-modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); padding-top: 60px;">
-        <div style="background-color: white; margin: 5% auto; padding: 2rem; border: 1px solid #dee2e6; width: 80%; max-width: 800px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); position: relative;">
-            <span id="close-modal-btn" style="color: #6c757d; position: absolute; top: 1rem; right: 1.5rem; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
-            <h2>Export Context</h2>
-            <p id="modal-message">Select the items to include in the exported context.</p>
-            <div id="context-tree-container"></div>
-            <textarea id="context-textarea" readonly style="display: none; width: 100%; height: 400px; font-family: monospace; border: 1px solid #dee2e6; border-radius: 4px; padding: 0.5rem; resize: vertical;"></textarea>
-            <button id="generate-context-btn" class="btn btn--primary">
-                <span class="btn__label">Generate & Copy Context</span>
-            </button>
+    <div id="context-modal" class="modal">
+        <div class="modal__dialog">
+            <div class="modal__header">
+                <h2 class="modal__title">Export Context</h2>
+                <span id="close-modal-btn" class="modal__close">&times;</span>
+            </div>
+            <div class="modal__body">
+                <p id="modal-message">Select the items to include in the exported context.</p>
+                <div id="context-tree-container"></div>
+                <textarea id="context-textarea" readonly class="form-group__input" style="display: none; height: 400px; font-family: monospace; resize: vertical;"></textarea>
+            </div>
+            <div class="modal__footer">
+                <button id="generate-context-btn" class="btn btn--primary">
+                    <span class="btn__label">Generate & Copy Context</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -153,7 +159,7 @@
             contextTextarea.style.display = 'none';
             treeContainer.style.display = 'block';
             generateBtn.style.display = 'block';
-            contextModal.style.display = 'block';
+            contextModal.classList.add('active');
 
             const response = await fetch(`{{ url_for('get_context_tree', node_id='') }}${NODE_ID}`, {
                 credentials: 'same-origin'
@@ -165,18 +171,14 @@
                 treeContainer.innerHTML = '<p>No attached folders in this context.</p>';
             } else {
                 const ul = document.createElement('ul');
-                ul.style.listStyle = 'none';
-                ul.style.padding = '0';
+                ul.className = 'checkbox-list';
 
                 data.attached_folders.forEach(folder => {
                     const li = document.createElement('li');
-                    li.style.padding = '0.5rem 0';
+                    li.className = 'checkbox-list__item';
 
                     const label = document.createElement('label');
-                    label.style.display = 'flex';
-                    label.style.alignItems = 'center';
-                    label.style.gap = '8px';
-                    label.style.cursor = 'pointer';
+                    label.className = 'checkbox-list__label';
 
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
@@ -232,13 +234,13 @@
 
         // Modal closing
         document.getElementById('close-modal-btn').addEventListener('click', () => {
-            document.getElementById('context-modal').style.display = 'none';
+            document.getElementById('context-modal').classList.remove('active');
         });
 
         window.addEventListener('click', (event) => {
             const modal = document.getElementById('context-modal');
             if (event.target == modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
             }
         });
 
