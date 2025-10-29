@@ -248,7 +248,6 @@
                             credentials: 'same-origin',
                             body: JSON.stringify({ content: editor.getMarkdown() })
                         });
-                        alert('Content saved!');
                         const updatedData = await (await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`, {
                             credentials: 'same-origin'
                         })).json();
