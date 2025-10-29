@@ -386,6 +386,25 @@ def get_folder_tree():
 
     return jsonify(root)
 
+@app.route('/api/node/<node_id>/children', methods=['GET'])
+@token_required
+def get_node_children(node_id):
+    """Get immediate children of a node."""
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
+    with driver.session() as session:
+        result = session.run("""
+            MATCH (:ContextItem {id: $parent_id})-[:PARENT_OF]->(child:ContextItem)
+            RETURN child.id as id, child.name as name, child.is_folder as is_folder,
+                   child.is_attached as is_attached, child.read_only as read_only
+            ORDER BY child.is_folder DESC, child.name
+        """, parent_id=node_id)
+
+        children = [dict(record) for record in result]
+        return jsonify(children)
+
 @app.route('/api/node/<node_id>/move', methods=['POST'])
 @token_required
 def move_node(node_id):

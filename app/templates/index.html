@@ -62,8 +62,11 @@
                     <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Grid View">
                         <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
                     </button>
-                    <button class="view-switcher__button" id="view-tree" title="Tree View">
+                    <button class="view-switcher__button" id="view-tree" title="List View">
                         <i data-lucide="list" style="width: 20px; height: 20px;"></i>
+                    </button>
+                    <button class="view-switcher__button" id="view-hierarchy" title="Hierarchy View">
+                        <i data-lucide="folder-tree" style="width: 20px; height: 20px;"></i>
                     </button>
                 </div>
             </div>
@@ -456,6 +459,7 @@
         const fileBrowserElement = document.getElementById('file-browser');
         const viewGridBtn = document.getElementById('view-grid');
         const viewTreeBtn = document.getElementById('view-tree');
+        const viewHierarchyBtn = document.getElementById('view-hierarchy');
         let currentView = 'grid'; // Default
 
         // Load user's view preference from Codex
@@ -488,18 +492,129 @@
             }
         }
 
-        // Set the view (grid or tree)
+        // Build hierarchy view
+        async function buildHierarchyView() {
+            fileBrowserElement.innerHTML = '';
+
+            // Get all items from the current view
+            const items = document.querySelectorAll('.file-item');
+
+            // Rebuild from template data
+            {% for item in items %}
+            await createHierarchyItem({
+                id: '{{ item.id }}',
+                name: '{{ item.name }}',
+                is_folder: {{ item.is_folder|lower }},
+                is_attached: {{ item.is_attached|lower }},
+                read_only: {{ item.read_only|lower }}
+            }, fileBrowserElement);
+            {% endfor %}
+        }
+
+        async function createHierarchyItem(item, container, level = 0) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'hierarchy-item';
+            itemDiv.dataset.id = item.id;
+            itemDiv.dataset.isFolder = item.is_folder;
+
+            // Toggle for folders
+            const toggle = document.createElement('span');
+            toggle.className = 'hierarchy-item__toggle';
+            if (item.is_folder) {
+                toggle.textContent = '▶';
+            } else {
+                toggle.textContent = '';
+            }
+
+            // Icon
+            const icon = document.createElement('span');
+            icon.className = 'hierarchy-item__icon';
+            if (item.is_folder) {
+                icon.textContent = item.is_attached ? '📎' : '📁';
+            } else {
+                icon.textContent = '📄';
+            }
+
+            // Name
+            const name = document.createElement('span');
+            name.className = 'hierarchy-item__name';
+            name.textContent = item.name;
+
+            itemDiv.appendChild(toggle);
+            itemDiv.appendChild(icon);
+            itemDiv.appendChild(name);
+
+            // Children container
+            const childrenDiv = document.createElement('div');
+            childrenDiv.className = 'hierarchy-children';
+            childrenDiv.dataset.parentId = item.id;
+
+            // Click handler
+            itemDiv.addEventListener('click', async (e) => {
+                e.stopPropagation();
+
+                if (e.target === toggle && item.is_folder) {
+                    // Toggle children
+                    const isExpanded = childrenDiv.classList.contains('hierarchy-children--expanded');
+
+                    if (isExpanded) {
+                        childrenDiv.classList.remove('hierarchy-children--expanded');
+                        toggle.textContent = '▶';
+                    } else {
+                        // Load children if not loaded yet
+                        if (childrenDiv.children.length === 0) {
+                            const response = await fetch(`{{ url_for('get_node_children', node_id='') }}${item.id}`, {
+                                credentials: 'same-origin'
+                            });
+                            if (response.ok) {
+                                const children = await response.json();
+                                for (const child of children) {
+                                    await createHierarchyItem(child, childrenDiv, level + 1);
+                                }
+                            }
+                        }
+                        childrenDiv.classList.add('hierarchy-children--expanded');
+                        toggle.textContent = '▼';
+                    }
+                } else {
+                    // Navigate or open item
+                    if (item.is_folder) {
+                        const itemName = item.name;
+                        const newPath = CURRENT_PATH ? `${CURRENT_PATH}/${encodeURIComponent(itemName)}` : encodeURIComponent(itemName);
+                        window.location.href = `{{ url_for('browse', path='') }}${newPath}`;
+                    } else {
+                        window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
+                    }
+                }
+            });
+
+            container.appendChild(itemDiv);
+            if (item.is_folder) {
+                container.appendChild(childrenDiv);
+            }
+        }
+
+        // Set the view (grid, tree, or hierarchy)
         function setView(view, save = true) {
             currentView = view;
 
+            // Remove all view classes
+            fileBrowserElement.classList.remove('file-browser--tree', 'file-browser--hierarchy');
+
+            // Remove active from all buttons
+            viewGridBtn.classList.remove('view-switcher__button--active');
+            viewTreeBtn.classList.remove('view-switcher__button--active');
+            viewHierarchyBtn.classList.remove('view-switcher__button--active');
+
             if (view === 'grid') {
-                fileBrowserElement.classList.remove('file-browser--tree');
                 viewGridBtn.classList.add('view-switcher__button--active');
-                viewTreeBtn.classList.remove('view-switcher__button--active');
-            } else {
+            } else if (view === 'tree') {
                 fileBrowserElement.classList.add('file-browser--tree');
                 viewTreeBtn.classList.add('view-switcher__button--active');
-                viewGridBtn.classList.remove('view-switcher__button--active');
+            } else if (view === 'hierarchy') {
+                fileBrowserElement.classList.add('file-browser--hierarchy');
+                viewHierarchyBtn.classList.add('view-switcher__button--active');
+                buildHierarchyView();
             }
 
             if (save) {
@@ -510,6 +625,7 @@
         // View switcher button handlers
         viewGridBtn.addEventListener('click', () => setView('grid'));
         viewTreeBtn.addEventListener('click', () => setView('tree'));
+        viewHierarchyBtn.addEventListener('click', () => setView('hierarchy'));
 
         // Load preference on page load
         loadViewPreference();
