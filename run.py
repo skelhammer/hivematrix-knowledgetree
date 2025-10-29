@@ -1,21 +1,36 @@
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+
+# Load .flaskenv before importing app
+load_dotenv('.flaskenv')
+
 from app import app
-from waitress import serve
-import sys
 
 if __name__ == "__main__":
-    # Ensure unbuffered output for log capture
-    sys.stdout.reconfigure(line_buffering=True)
-    sys.stderr.reconfigure(line_buffering=True)
+    # Collect all template files for auto-reload
+    extra_files = []
 
-    # Configure Flask request logging to stdout
-    @app.after_request
-    def log_request(response):
-        from flask import request
-        print(f'{request.remote_addr} - - "{request.method} {request.path}" {response.status_code}', flush=True)
-        return response
+    # Add all HTML templates
+    templates_dir = Path('app/templates')
+    if templates_dir.exists():
+        for template_file in templates_dir.rglob('*.html'):
+            extra_files.append(str(template_file))
 
-    # Security: Bind to localhost only - KnowledgeTree should not be exposed externally
-    # Access via Nexus proxy at https://localhost:443/knowledgetree
+    # Add all Python files in app directory
+    app_dir = Path('app')
+    if app_dir.exists():
+        for py_file in app_dir.rglob('*.py'):
+            extra_files.append(str(py_file))
+
     print("Starting KnowledgeTree on http://127.0.0.1:5020", flush=True)
     print("Access via Nexus at https://localhost:443/knowledgetree/", flush=True)
-    serve(app, host='127.0.0.1', port=5020)
+    print("Auto-reload enabled - templates and Python files will reload on change", flush=True)
+
+    # Security: Bind to localhost only - KnowledgeTree should not be exposed externally
+    app.run(
+        host='127.0.0.1',
+        port=5020,
+        debug=True,
+        extra_files=extra_files
+    )

@@ -3,28 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <title>KnowledgeTree</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="card">
         <div class="card__header">
-            <div class="header-toolbar header-toolbar--space-between">
-                <h1 class="card__title">KnowledgeTree - Documentation & Knowledge Base</h1>
-                {% if user.permission_level == 'admin' %}
-                <a href="{{ url_for('admin_settings') }}">
-                    <button class="btn">
-                        <span class="btn__label">⚙️ Admin Settings</span>
-                    </button>
-                </a>
-                {% endif %}
-            </div>
+            <h1 class="card__title">KnowledgeTree - Documentation & Knowledge Base</h1>
         </div>
         <div class="card__body">
             <p class="u-mb-3">Browse and search organizational knowledge, documentation, and technical resources.</p>
-            <p>Welcome, <strong>{{ user.name }}</strong> ({{ user.permission_level }})</p>
+            {% if user.permission_level == 'admin' %}
+            <a href="{{ url_for('admin_settings') }}">
+                <button class="btn btn--secondary">
+                    <span class="btn__label">
+                        <i data-lucide="settings" class="btn__icon"></i>
+                        Admin Settings
+                    </span>
+                </button>
+            </a>
+            {% endif %}
         </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="file-browser-container">
         <div class="card__header">
             <div class="header-toolbar">
                 {% if current_path %}
@@ -45,15 +46,11 @@
                         <a href="{{ url_for('browse', path=(path_slice | map('quote_plus') | join('/'))) }}" class="breadcrumb__link">{{ name }}</a>
                     {% endfor %}
                 </div>
-
-                <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
-                       autocomplete="off" data-start-node="{{ current_node_id }}">
             </div>
         </div>
-    </div>
-
-    <div class="card" id="file-browser-container">
-        <div class="card__body">
+        <div class="card__body u-p-2">
+            <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
+                   autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px; margin-bottom: 1rem;">
             <div id="file-browser" class="file-browser">
                 {% for item in items %}
                     <div class="file-item {% if item.read_only %}file-item--read-only{% endif %}"
@@ -78,14 +75,36 @@
 
     <div id="context-menu" class="context-menu">
         <ul class="context-menu__list">
-            <li id="context-open" class="context-menu__item">Open</li>
-            <li id="context-rename" class="context-menu__item">Rename</li>
-            <li id="context-delete" class="context-menu__item">Delete</li>
-            <hr class="context-menu__separator">
-            <li id="context-new-folder" class="context-menu__item">New Folder</li>
-            <li id="context-new-attached" class="context-menu__item">New Attached Folder</li>
-            <li id="context-new-article" class="context-menu__item">New Article</li>
+            <li id="context-open" class="context-menu__item context-menu__item--item-action">Open</li>
+            <li id="context-rename" class="context-menu__item context-menu__item--item-action">Rename</li>
+            <li id="context-move" class="context-menu__item context-menu__item--item-action">Move</li>
+            <li id="context-delete" class="context-menu__item context-menu__item--item-action">Delete</li>
+            <hr id="context-separator" class="context-menu__separator">
+            <li id="context-new-folder" class="context-menu__item context-menu__item--create-action">New Folder</li>
+            <li id="context-new-attached" class="context-menu__item context-menu__item--create-action">New Attached Folder</li>
+            <li id="context-new-article" class="context-menu__item context-menu__item--create-action">New Article</li>
         </ul>
+    </div>
+
+    <div id="move-modal" class="modal">
+        <div class="modal__dialog">
+            <div class="modal__header">
+                <h2 class="modal__title">Move Item</h2>
+                <span id="close-move-modal" class="modal__close">&times;</span>
+            </div>
+            <div class="modal__body">
+                <p>Click on a folder to select it as the destination. Click the arrows to expand/collapse folders.</p>
+                <div id="folder-list" class="u-mt-2"></div>
+            </div>
+            <div class="modal__footer">
+                <button id="cancel-move-btn" class="btn">
+                    <span class="btn__label">Cancel</span>
+                </button>
+                <button id="confirm-move-btn" class="btn btn--primary">
+                    <span class="btn__label">Move Here</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div id="search-results" class="dropdown"></div>
@@ -101,7 +120,7 @@
 
         if (fileBrowser) {
             fileBrowser.querySelectorAll('.file-item').forEach(item => {
-                item.addEventListener('dblclick', () => {
+                item.addEventListener('click', () => {
                     const isFolder = item.dataset.isFolder === 'true';
                     const id = item.dataset.id;
                     const name = item.dataset.name;
@@ -121,12 +140,27 @@
             e.preventDefault();
             const targetItem = e.target.closest('.file-item');
 
+            // Get menu items
+            const itemActions = document.querySelectorAll('.context-menu__item--item-action');
+            const createActions = document.querySelectorAll('.context-menu__item--create-action');
+            const separator = document.getElementById('context-separator');
+
             if (targetItem) {
+                // Right-clicked on an item - show item actions, hide create actions
                 document.querySelectorAll('.file-item').forEach(el => el.classList.remove('file-item--selected'));
                 targetItem.classList.add('file-item--selected');
                 selectedItemId = targetItem.dataset.id;
+
+                itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                createActions.forEach(el => el.classList.add('context-menu__item--hidden'));
+                separator.classList.add('context-menu__item--hidden');
             } else {
+                // Right-clicked on empty space - show create actions, hide item actions
                 selectedItemId = null;
+
+                itemActions.forEach(el => el.classList.add('context-menu__item--hidden'));
+                createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                separator.classList.add('context-menu__item--hidden');
             }
 
             contextMenu.style.display = 'block';
@@ -137,6 +171,8 @@
         document.addEventListener('click', (e) => {
             if (!contextMenu.contains(e.target)) {
                 contextMenu.style.display = 'none';
+                // Clear selection when closing context menu
+                document.querySelectorAll('.file-item').forEach(el => el.classList.remove('file-item--selected'));
             }
         });
 
@@ -200,7 +236,143 @@
         document.getElementById('context-open').addEventListener('click', () => {
             if (selectedItemId) {
                 const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"]`);
-                if(itemElement) itemElement.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+                if(itemElement) itemElement.click();
+            }
+        });
+
+        // Move functionality
+        let selectedDestinationId = null;
+
+        function createFolderTreeNode(folder, level = 0) {
+            const li = document.createElement('li');
+            li.className = 'folder-tree__item';
+
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'folder-tree__node';
+            nodeDiv.dataset.folderId = folder.id;
+
+            // Toggle button (for expand/collapse)
+            const toggle = document.createElement('span');
+            toggle.className = 'folder-tree__toggle';
+            if (folder.children && folder.children.length > 0) {
+                toggle.textContent = '▶';
+            } else {
+                toggle.textContent = '';
+            }
+
+            // Folder icon
+            const icon = document.createElement('span');
+            icon.className = 'folder-tree__icon';
+            icon.textContent = folder.is_attached ? '📎' : '📁';
+
+            // Folder name
+            const name = document.createElement('span');
+            name.className = 'folder-tree__name';
+            name.textContent = folder.name;
+
+            nodeDiv.appendChild(toggle);
+            nodeDiv.appendChild(icon);
+            nodeDiv.appendChild(name);
+
+            // Click handler for selection
+            nodeDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                // Handle toggle click
+                if (e.target === toggle && folder.children && folder.children.length > 0) {
+                    const childrenUl = li.querySelector('.folder-tree__children');
+                    if (childrenUl) {
+                        const isCollapsed = childrenUl.classList.contains('folder-tree__children--collapsed');
+                        childrenUl.classList.toggle('folder-tree__children--collapsed');
+                        toggle.textContent = isCollapsed ? '▼' : '▶';
+                    }
+                    return;
+                }
+
+                // Handle folder selection
+                document.querySelectorAll('.folder-tree__node').forEach(n => {
+                    n.classList.remove('folder-tree__node--selected');
+                });
+                nodeDiv.classList.add('folder-tree__node--selected');
+                selectedDestinationId = folder.id;
+            });
+
+            li.appendChild(nodeDiv);
+
+            // Add children
+            if (folder.children && folder.children.length > 0) {
+                const childrenUl = document.createElement('ul');
+                childrenUl.className = 'folder-tree__children folder-tree__children--collapsed';
+
+                folder.children.forEach(child => {
+                    childrenUl.appendChild(createFolderTreeNode(child, level + 1));
+                });
+
+                li.appendChild(childrenUl);
+            }
+
+            return li;
+        }
+
+        document.getElementById('context-move').addEventListener('click', async () => {
+            if (!selectedItemId) return;
+
+            const moveModal = document.getElementById('move-modal');
+            const folderList = document.getElementById('folder-list');
+
+            // Fetch folder tree
+            const response = await fetch('{{ url_for("get_folder_tree") }}', {
+                credentials: 'same-origin'
+            });
+            const folderTree = await response.json();
+
+            // Build folder tree UI
+            folderList.innerHTML = '';
+            const ul = document.createElement('ul');
+            ul.className = 'folder-tree';
+            ul.appendChild(createFolderTreeNode(folderTree));
+            folderList.appendChild(ul);
+
+            selectedDestinationId = null;
+            moveModal.classList.add('active');
+        });
+
+        document.getElementById('confirm-move-btn').addEventListener('click', async () => {
+            if (!selectedDestinationId || !selectedItemId) {
+                alert('Please select a destination folder');
+                return;
+            }
+
+            const basePath = window.location.pathname.startsWith('/knowledgetree/') ? '/knowledgetree' : '';
+            const response = await fetch(`${basePath}/api/node/${selectedItemId}/move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ new_parent_id: selectedDestinationId })
+            });
+
+            if (response.ok) {
+                document.getElementById('move-modal').classList.remove('active');
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert(`Error: ${error.error || 'Failed to move item'}`);
+            }
+        });
+
+        document.getElementById('close-move-modal').addEventListener('click', () => {
+            document.getElementById('move-modal').classList.remove('active');
+        });
+
+        document.getElementById('cancel-move-btn').addEventListener('click', () => {
+            document.getElementById('move-modal').classList.remove('active');
+        });
+
+        // Close modal on background click
+        window.addEventListener('click', (event) => {
+            const moveModal = document.getElementById('move-modal');
+            if (event.target == moveModal) {
+                moveModal.classList.remove('active');
             }
         });
 
@@ -233,7 +405,7 @@
                         div.innerHTML = `<div class="dropdown__item-title">${item.name}</div><div class="dropdown__item-subtitle">${item.folder_path}</div>`;
                         div.addEventListener('click', () => {
                             if (item.is_folder) {
-                                window.location.href = `{{ url_for('browse', path='') }}${item.folder_path}`;
+                                window.location.href = `{{ url_for('browse', path='') }}${item.url_path}`;
                             } else {
                                 window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
                             }
@@ -255,6 +427,9 @@
                 searchResults.classList.remove('dropdown--visible');
             }
         });
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

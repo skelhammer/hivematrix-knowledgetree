@@ -159,8 +159,12 @@ def search_nodes():
         for record in result:
             record_dict = dict(record)
             path_list = record_dict['path_names'][1:]
-            folder_path = "/".join([quote(name) for name in path_list])
-            record_dict['folder_path'] = folder_path
+            # Display path (not URL encoded)
+            display_path = " / ".join(path_list) if path_list else "root"
+            # URL path (encoded for navigation)
+            url_path = "/".join([quote(name) for name in path_list])
+            record_dict['folder_path'] = display_path
+            record_dict['url_path'] = url_path
             processed_results.append(record_dict)
 
         return jsonify(processed_results)
@@ -340,6 +344,98 @@ def update_node(node_id):
         if 'name' in data:
             session.run("MATCH (n:ContextItem {id: $id}) SET n.name = $name",
                         id=node_id, name=data['name'])
+
+    return jsonify({'success': True})
+
+@app.route('/api/folders/tree', methods=['GET'])
+@token_required
+def get_folder_tree():
+    """Get folder hierarchy as a tree structure."""
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
+    def build_tree(session, parent_id='root'):
+        """Recursively build folder tree."""
+        query = """
+            MATCH (:ContextItem {id: $parent_id})-[:PARENT_OF]->(child:ContextItem)
+            WHERE child.is_folder = true
+            RETURN child.id as id, child.name as name, child.is_attached as is_attached
+            ORDER BY child.name
+        """
+        result = session.run(query, parent_id=parent_id)
+        children = []
+        for record in result:
+            node = {
+                'id': record['id'],
+                'name': record['name'],
+                'is_attached': record['is_attached'],
+                'children': build_tree(session, record['id'])
+            }
+            children.append(node)
+        return children
+
+    with driver.session() as session:
+        # Get root node
+        root = {
+            'id': 'root',
+            'name': 'KnowledgeTree Root',
+            'is_attached': False,
+            'children': build_tree(session, 'root')
+        }
+
+    return jsonify(root)
+
+@app.route('/api/node/<node_id>/move', methods=['POST'])
+@token_required
+def move_node(node_id):
+    """Move node to a new parent folder."""
+    data = request.json
+    new_parent_id = data.get('new_parent_id')
+
+    if not new_parent_id:
+        return jsonify({'error': 'new_parent_id is required'}), 400
+
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
+    with driver.session() as session:
+        # Check if the node exists and is not root
+        node_check = session.run("MATCH (n:ContextItem {id: $id}) RETURN n.id as id", id=node_id).single()
+        if not node_check or node_id == 'root':
+            return jsonify({'error': 'Cannot move root or non-existent node'}), 400
+
+        # Check if new parent exists and is a folder
+        parent_check = session.run(
+            "MATCH (p:ContextItem {id: $id}) RETURN p.is_folder as is_folder",
+            id=new_parent_id
+        ).single()
+        if not parent_check:
+            return jsonify({'error': 'Parent folder not found'}), 404
+        if not parent_check['is_folder']:
+            return jsonify({'error': 'Target must be a folder'}), 400
+
+        # Check if moving to itself or a descendant (would create a cycle)
+        cycle_check = session.run("""
+            MATCH path = (child:ContextItem {id: $child_id})-[:PARENT_OF*0..]->(parent:ContextItem {id: $parent_id})
+            RETURN count(path) > 0 as would_cycle
+        """, child_id=node_id, parent_id=new_parent_id).single()
+
+        if cycle_check and cycle_check['would_cycle']:
+            return jsonify({'error': 'Cannot move a folder into itself or its descendants'}), 400
+
+        # Delete old parent relationship and create new one
+        session.run("""
+            MATCH (old_parent)-[r:PARENT_OF]->(node:ContextItem {id: $node_id})
+            DELETE r
+        """, node_id=node_id)
+
+        session.run("""
+            MATCH (new_parent:ContextItem {id: $parent_id})
+            MATCH (node:ContextItem {id: $node_id})
+            CREATE (new_parent)-[:PARENT_OF]->(node)
+        """, parent_id=new_parent_id, node_id=node_id)
 
     return jsonify({'success': True})
 

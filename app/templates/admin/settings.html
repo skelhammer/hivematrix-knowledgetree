@@ -7,7 +7,7 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="header-toolbar header-toolbar--space-between">
                 <h1 class="card__title">KnowledgeTree Admin Settings</h1>
                 <a href="{{ url_for('browse', path='') }}">
                     <button class="btn">
@@ -44,9 +44,9 @@
                         <td><strong>Freshservice Status:</strong></td>
                         <td>
                             {% if settings.freshservice_configured %}
-                                <span style="color: green;">✓ Configured</span>
+                                <span class="status-text status-text--success">✓ Configured</span>
                             {% else %}
-                                <span style="color: gray;">Not configured</span>
+                                <span class="status-text status-text--warning">Not configured</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -74,17 +74,17 @@
             <button id="sync-codex-btn" class="btn btn--primary">
                 <span class="btn__label">Sync from Codex</span>
             </button>
-            <div id="codex-sync-output" style="margin-top: 1rem; display: none;">
+            <div id="codex-sync-output" class="u-mt-2 u-hidden">
                 <h4>Sync Output:</h4>
-                <pre style="background: #f4f7f9; padding: 1rem; border-radius: 4px; overflow-x: auto; max-height: 400px;"></pre>
+                <pre class="code-block"></pre>
             </div>
 
-            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+            <hr class="u-mt-4 u-mb-4">
 
             {% if settings.freshservice_configured %}
             <h3>Freshservice Ticket Sync</h3>
             <p>Synchronize support tickets from Freshservice.</p>
-            <div style="display: flex; gap: 1rem;">
+            <div class="u-flex u-flex-gap-2">
                 <button id="sync-tickets-btn" class="btn btn--primary">
                     <span class="btn__label">Sync New Tickets</span>
                 </button>
@@ -92,13 +92,13 @@
                     <span class="btn__label">Full Refresh (Overwrite)</span>
                 </button>
             </div>
-            <div id="tickets-sync-output" style="margin-top: 1rem; display: none;">
+            <div id="tickets-sync-output" class="u-mt-2 u-hidden">
                 <h4>Sync Output:</h4>
-                <pre style="background: #f4f7f9; padding: 1rem; border-radius: 4px; overflow-x: auto; max-height: 400px;"></pre>
+                <pre class="code-block"></pre>
             </div>
             {% else %}
             <h3>Freshservice Ticket Sync</h3>
-            <p style="color: gray;">Freshservice is not configured. Run <code>python init_db.py</code> to configure ticket syncing.</p>
+            <p class="status-text status-text--warning">Freshservice is not configured. Run <code>python init_db.py</code> to configure ticket syncing.</p>
             {% endif %}
         </div>
     </div>
@@ -114,11 +114,11 @@
                 <span class="btn__label">Export User Data</span>
             </button>
 
-            <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e0e0e0;">
+            <hr class="u-mt-4 u-mb-4">
 
             <h3>Import User Data</h3>
             <p>Import data from a previously exported JSON file. This will merge the data into the current database.</p>
-            <input type="file" id="import-file-input" accept=".json" style="margin-bottom: 1rem;">
+            <input type="file" id="import-file-input" accept=".json" class="u-mb-2">
             <button id="import-data-btn" class="btn btn--primary">
                 <span class="btn__label">Import User Data</span>
             </button>
@@ -130,7 +130,7 @@
             <h2 class="card__title">Dangerous Actions</h2>
         </div>
         <div class="card__body">
-            <p style="color: #e74c3c;"><strong>Warning:</strong> This will delete all data in the KnowledgeTree database.</p>
+            <p class="status-text status-text--danger"><strong>Warning:</strong> This will delete all data in the KnowledgeTree database.</p>
             <button id="wipe-db-btn" class="btn btn--danger">
                 <span class="btn__label">Wipe Database</span>
             </button>
@@ -160,7 +160,7 @@
                     </table>
                 `;
             } catch (error) {
-                document.getElementById('sync-status').innerHTML = '<p style="color: red;">Failed to load sync status</p>';
+                document.getElementById('sync-status').innerHTML = '<p class="status-text status-text--danger">Failed to load sync status</p>';
             }
         }
 
@@ -172,7 +172,7 @@
 
             btn.disabled = true;
             btn.querySelector('.btn__label').textContent = 'Syncing...';
-            output.style.display = 'block';
+            output.classList.remove('u-hidden');
             pre.textContent = 'Starting Codex sync...\n';
 
             try {
@@ -207,7 +207,7 @@
 
             btn.disabled = true;
             btn.querySelector('.btn__label').textContent = 'Syncing...';
-            output.style.display = 'block';
+            output.classList.remove('u-hidden');
             pre.textContent = 'Starting ticket sync...\n';
 
             try {
@@ -248,7 +248,7 @@
 
             btn.disabled = true;
             btn.querySelector('.btn__label').textContent = 'Syncing...';
-            output.style.display = 'block';
+            output.classList.remove('u-hidden');
             pre.textContent = 'Starting full ticket refresh...\n';
 
             try {
