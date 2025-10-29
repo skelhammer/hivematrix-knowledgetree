@@ -54,14 +54,6 @@
             background-color: var(--color-surface) !important;
             color: var(--color-text) !important;
         }
-
-
-        .editor-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
     </style>
 </head>
 <body>
@@ -89,7 +81,7 @@
                         Export Context
                     </span>
                 </button>
-                <button id="edit-btn" class="btn" style="display: none;">
+                <button id="edit-btn" class="btn">
                     <span class="btn__label">
                         <i data-lucide="edit" class="btn__icon"></i>
                         Edit Content
@@ -102,17 +94,17 @@
 
             <div id="editor-container" style="display: none;">
                 <div id="editor"></div>
-                <div class="editor-actions">
-                    <button id="save-btn" class="btn btn--primary">
-                        <span class="btn__label">
-                            <i data-lucide="save" class="btn__icon"></i>
-                            Save Content
-                        </span>
-                    </button>
+                <div class="button-group" style="justify-content: flex-end; margin-top: 1rem;">
                     <button id="cancel-edit-btn" class="btn">
                         <span class="btn__label">
                             <i data-lucide="x" class="btn__icon"></i>
                             Cancel
+                        </span>
+                    </button>
+                    <button id="save-btn" class="btn btn--primary">
+                        <span class="btn__label">
+                            <i data-lucide="save" class="btn__icon"></i>
+                            Save Content
                         </span>
                     </button>
                 </div>
@@ -205,9 +197,12 @@
                 const editBtn = document.getElementById('edit-btn');
                 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
+                // Hide edit button initially
+                editBtn.style.display = 'none';
+
                 if (!data.read_only) {
                     // Show edit button
-                    editBtn.style.display = 'inline-flex';
+                    editBtn.style.display = '';
 
                     // Initialize editor
                     editor = new toastui.Editor({
@@ -231,7 +226,7 @@
                     editBtn.addEventListener('click', () => {
                         contentDisplay.style.display = 'none';
                         editorContainer.style.display = 'block';
-                        editBtn.style.display = 'none';
+                        editBtn.parentElement.style.display = 'none';
                         lucide.createIcons(); // Reinitialize icons
                     });
 
@@ -239,7 +234,7 @@
                     cancelEditBtn.addEventListener('click', () => {
                         editorContainer.style.display = 'none';
                         contentDisplay.style.display = 'block';
-                        editBtn.style.display = 'inline-flex';
+                        editBtn.parentElement.style.display = '';
                         // Reset editor content to original
                         editor.setMarkdown(data.content || '');
                         lucide.createIcons(); // Reinitialize icons
@@ -262,7 +257,7 @@
                         // Switch back to view mode
                         editorContainer.style.display = 'none';
                         contentDisplay.style.display = 'block';
-                        editBtn.style.display = 'inline-flex';
+                        editBtn.parentElement.style.display = '';
                         lucide.createIcons(); // Reinitialize icons
                     });
                 }
