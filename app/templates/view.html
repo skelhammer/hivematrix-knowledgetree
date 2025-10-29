@@ -12,21 +12,27 @@
             border-color: var(--color-border-medium) !important;
         }
 
-        /* Toolbar */
+        /* Toolbar - force dark background */
         [data-theme="dark"] .toastui-editor-toolbar {
-            background-color: var(--color-background) !important;
+            background-color: var(--color-surface) !important;
             border-bottom-color: var(--color-border-medium) !important;
+        }
+
+        /* Toolbar item wrappers */
+        [data-theme="dark"] .toastui-editor-toolbar-group,
+        [data-theme="dark"] .toastui-editor-toolbar-item-wrapper {
+            background-color: var(--color-surface) !important;
         }
 
         /* Toolbar buttons */
         [data-theme="dark"] .toastui-editor-toolbar-icons,
         [data-theme="dark"] .toastui-editor-mode-switch {
-            background-color: transparent !important;
+            background-color: var(--color-surface) !important;
         }
 
         [data-theme="dark"] .toastui-editor-toolbar-icons button,
         [data-theme="dark"] .toastui-editor-mode-switch button {
-            background-color: transparent !important;
+            background-color: var(--color-surface) !important;
             color: var(--color-text) !important;
             border: none !important;
         }
@@ -40,6 +46,11 @@
         [data-theme="dark"] .toastui-editor-toolbar-icons svg,
         [data-theme="dark"] .toastui-editor-mode-switch svg {
             filter: invert(1) brightness(0.9) !important;
+        }
+
+        /* Force all toolbar children to be dark */
+        [data-theme="dark"] .toastui-editor-toolbar *:not(svg) {
+            background-color: var(--color-surface) !important;
         }
 
         /* Editor content areas */
