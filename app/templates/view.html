@@ -40,7 +40,7 @@
 
         [data-theme="dark"] .toastui-editor-toolbar-icons button,
         [data-theme="dark"] .toastui-editor-mode-switch button {
-            background-color: var(--color-surface) !important;
+            background-color: transparent !important;
             color: #ffffff !important;
             border: none !important;
             outline: none !important;
@@ -50,7 +50,7 @@
 
         /* Target the actual icon buttons with background images */
         [data-theme="dark"] button.toastui-editor-toolbar-icons {
-            filter: invert(1) !important;
+            filter: invert(1) grayscale(100%) brightness(2) !important;
             opacity: 1 !important;
         }
 
