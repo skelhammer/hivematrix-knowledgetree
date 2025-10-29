@@ -601,6 +601,7 @@
 
         // Set the view (grid, tree, or hierarchy)
         async function setView(view, save = true) {
+            const previousView = currentView; // Save previous view before updating
             currentView = view;
 
             // Remove all view classes
@@ -613,13 +614,13 @@
 
             if (view === 'grid') {
                 // Restore original HTML if coming from hierarchy
-                if (currentView === 'hierarchy') {
+                if (previousView === 'hierarchy') {
                     fileBrowserElement.innerHTML = originalHTML;
                 }
                 viewGridBtn.classList.add('view-switcher__button--active');
             } else if (view === 'tree') {
                 // Restore original HTML if coming from hierarchy
-                if (currentView === 'hierarchy') {
+                if (previousView === 'hierarchy') {
                     fileBrowserElement.innerHTML = originalHTML;
                 }
                 fileBrowserElement.classList.add('file-browser--tree');
