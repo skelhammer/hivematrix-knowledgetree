@@ -1,6 +1,13 @@
 # HiveMatrix KnowledgeTree
 
-Knowledge graph and semantic data management for HiveMatrix.
+Knowledge base system for HiveMatrix with hierarchical data organization.
+
+KnowledgeTree organizes company knowledge in a filesystem-like structure:
+- **Sections** → **Categories** → **Topics** (like folders and files)
+- Stores documentation, procedures, and institutional knowledge
+- Uses Neo4j graph database for relationship tracking
+- Supports Markdown formatting for rich content
+- Full-text search across all knowledge articles
 
 ## Documentation
 
