@@ -3,17 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <title>Admin Settings - KnowledgeTree</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="card">
         <div class="card__header">
-            <div class="header-toolbar header-toolbar--space-between">
-                <h1 class="card__title">KnowledgeTree Admin Settings</h1>
+            <div class="header-toolbar">
                 <a href="{{ url_for('browse', path='') }}">
                     <button class="btn">
                         <span class="btn__label">← Back to Tree</span>
                     </button>
                 </a>
+                <h1 class="card__title">KnowledgeTree Admin Settings</h1>
             </div>
         </div>
         <div class="card__body">
@@ -72,7 +73,10 @@
             <h3>Codex Sync</h3>
             <p>Synchronize company structure, users, and assets from Codex.</p>
             <button id="sync-codex-btn" class="btn btn--primary">
-                <span class="btn__label">Sync from Codex</span>
+                <span class="btn__label">
+                    <i data-lucide="database" class="btn__icon"></i>
+                    Sync from Codex
+                </span>
             </button>
             <div id="codex-sync-output" class="u-mt-2 u-hidden">
                 <h4>Sync Output:</h4>
@@ -86,10 +90,16 @@
             <p>Synchronize support tickets from Freshservice.</p>
             <div class="u-flex u-flex-gap-2">
                 <button id="sync-tickets-btn" class="btn btn--primary">
-                    <span class="btn__label">Sync New Tickets</span>
+                    <span class="btn__label">
+                        <i data-lucide="refresh-cw" class="btn__icon"></i>
+                        Sync New Tickets
+                    </span>
                 </button>
                 <button id="sync-tickets-overwrite-btn" class="btn">
-                    <span class="btn__label">Full Refresh (Overwrite)</span>
+                    <span class="btn__label">
+                        <i data-lucide="refresh-ccw" class="btn__icon"></i>
+                        Full Refresh (Overwrite)
+                    </span>
                 </button>
             </div>
             <div id="tickets-sync-output" class="u-mt-2 u-hidden">
@@ -111,7 +121,10 @@
             <h3>Export User Data</h3>
             <p>Export all user-created (non-read-only) data to a JSON file. This can be used as a backup before wiping the database.</p>
             <button id="export-data-btn" class="btn btn--primary">
-                <span class="btn__label">Export User Data</span>
+                <span class="btn__label">
+                    <i data-lucide="download" class="btn__icon"></i>
+                    Export User Data
+                </span>
             </button>
 
             <hr class="u-mt-4 u-mb-4">
@@ -120,7 +133,10 @@
             <p>Import data from a previously exported JSON file. This will merge the data into the current database.</p>
             <input type="file" id="import-file-input" accept=".json" class="u-mb-2">
             <button id="import-data-btn" class="btn btn--primary">
-                <span class="btn__label">Import User Data</span>
+                <span class="btn__label">
+                    <i data-lucide="upload" class="btn__icon"></i>
+                    Import User Data
+                </span>
             </button>
         </div>
     </div>
@@ -132,7 +148,10 @@
         <div class="card__body">
             <p class="status-text status-text--danger"><strong>Warning:</strong> This will delete all data in the KnowledgeTree database.</p>
             <button id="wipe-db-btn" class="btn btn--danger">
-                <span class="btn__label">Wipe Database</span>
+                <span class="btn__label">
+                    <i data-lucide="alert-triangle" class="btn__icon"></i>
+                    Wipe Database
+                </span>
             </button>
         </div>
     </div>
@@ -171,7 +190,8 @@
             const pre = output.querySelector('pre');
 
             btn.disabled = true;
-            btn.querySelector('.btn__label').textContent = 'Syncing...';
+            btn.querySelector('.btn__label').innerHTML = '<i data-lucide="database" class="btn__icon"></i>Syncing...';
+            lucide.createIcons();
             output.classList.remove('u-hidden');
             pre.textContent = 'Starting Codex sync...\n';
 
@@ -195,7 +215,8 @@
                 alert('Failed to run Codex sync');
             } finally {
                 btn.disabled = false;
-                btn.querySelector('.btn__label').textContent = 'Sync from Codex';
+                btn.querySelector('.btn__label').innerHTML = '<i data-lucide="database" class="btn__icon"></i>Sync from Codex';
+                lucide.createIcons();
             }
         });
 
@@ -206,7 +227,8 @@
             const pre = output.querySelector('pre');
 
             btn.disabled = true;
-            btn.querySelector('.btn__label').textContent = 'Syncing...';
+            btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-cw" class="btn__icon"></i>Syncing...';
+            lucide.createIcons();
             output.classList.remove('u-hidden');
             pre.textContent = 'Starting ticket sync...\n';
 
@@ -232,7 +254,8 @@
                 alert('Failed to run ticket sync');
             } finally {
                 btn.disabled = false;
-                btn.querySelector('.btn__label').textContent = 'Sync New Tickets';
+                btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-cw" class="btn__icon"></i>Sync New Tickets';
+                lucide.createIcons();
             }
         });
 
@@ -247,7 +270,8 @@
             const pre = output.querySelector('pre');
 
             btn.disabled = true;
-            btn.querySelector('.btn__label').textContent = 'Syncing...';
+            btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-ccw" class="btn__icon"></i>Syncing...';
+            lucide.createIcons();
             output.classList.remove('u-hidden');
             pre.textContent = 'Starting full ticket refresh...\n';
 
@@ -273,7 +297,8 @@
                 alert('Failed to run ticket sync');
             } finally {
                 btn.disabled = false;
-                btn.querySelector('.btn__label').textContent = 'Full Refresh (Overwrite)';
+                btn.querySelector('.btn__label').innerHTML = '<i data-lucide="refresh-ccw" class="btn__icon"></i>Full Refresh (Overwrite)';
+                lucide.createIcons();
             }
         });
 
@@ -331,7 +356,8 @@
 
             const btn = document.getElementById('import-data-btn');
             btn.disabled = true;
-            btn.querySelector('.btn__label').textContent = 'Importing...';
+            btn.querySelector('.btn__label').innerHTML = '<i data-lucide="upload" class="btn__icon"></i>Importing...';
+            lucide.createIcons();
 
             try {
                 const response = await fetch('{{ url_for("admin_import") }}', {
@@ -351,12 +377,16 @@
                 alert(`A network error occurred: ${error}`);
             } finally {
                 btn.disabled = false;
-                btn.querySelector('.btn__label').textContent = 'Import User Data';
+                btn.querySelector('.btn__label').innerHTML = '<i data-lucide="upload" class="btn__icon"></i>Import User Data';
+                lucide.createIcons();
             }
         });
 
         // Load status on page load
         loadSyncStatus();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>
