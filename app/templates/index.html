@@ -49,8 +49,14 @@
             </div>
         </div>
         <div class="card__body u-p-2">
-            <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
-                   autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px; margin-bottom: 1rem;">
+            <div class="u-flex u-flex-gap-2 u-mb-2">
+                <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
+                       autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
+                <select id="search-scope" class="form-group__input" style="width: 150px;">
+                    <option value="current">Current Folder</option>
+                    <option value="all">All Items</option>
+                </select>
+            </div>
             <div id="file-browser" class="file-browser">
                 {% for item in items %}
                     <div class="file-item {% if item.read_only %}file-item--read-only{% endif %}"
@@ -378,10 +384,11 @@
 
         // Search functionality
         const searchInput = document.getElementById('search-input');
+        const searchScope = document.getElementById('search-scope');
         const searchResults = document.getElementById('search-results');
         let searchDebounceTimer;
 
-        searchInput.addEventListener('input', () => {
+        async function performSearch() {
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(async () => {
                 const query = searchInput.value.trim();
@@ -390,7 +397,11 @@
                     return;
                 }
 
-                const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${CURRENT_NODE_ID}`, {
+                // Determine start node based on scope selection
+                const scope = searchScope.value;
+                const startNodeId = scope === 'all' ? 'root' : CURRENT_NODE_ID;
+
+                const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${startNodeId}`, {
                     credentials: 'same-origin'
                 });
                 const items = await response.json();
@@ -420,10 +431,13 @@
                 searchResults.style.width = `${rect.width}px`;
                 searchResults.classList.add('dropdown--visible');
             }, 300);
-        });
+        }
+
+        searchInput.addEventListener('input', performSearch);
+        searchScope.addEventListener('change', performSearch);
 
         document.addEventListener('click', (e) => {
-            if (!searchResults.contains(e.target) && e.target !== searchInput) {
+            if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchScope) {
                 searchResults.classList.remove('dropdown--visible');
             }
         });
