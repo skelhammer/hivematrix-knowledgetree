@@ -24,15 +24,6 @@
 
     <div class="card">
         <div class="card__header">
-            <h2 class="card__title">Sync Status</h2>
-        </div>
-        <div class="card__body">
-            <div id="sync-status">Loading...</div>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card__header">
             <h2 class="card__title">Data Synchronization</h2>
         </div>
         <div class="card__body">
@@ -81,7 +72,7 @@
 
     <div class="card">
         <div class="card__header">
-            <h2 class="card__title">Dangerous Actions</h2>
+            <h2 class="card__title">Wipe Database</h2>
         </div>
         <div class="card__body">
             <p class="status-text status-text--danger"><strong>Warning:</strong> This will delete all data in the KnowledgeTree database.</p>
@@ -95,28 +86,6 @@
     </div>
 
     <script>
-        // Load sync status
-        async function loadSyncStatus() {
-            try {
-                const response = await fetch('{{ url_for("admin_sync_status") }}', {
-                    credentials: 'same-origin'
-                });
-                const data = await response.json();
-                document.getElementById('sync-status').innerHTML = `
-                    <table>
-                        <tbody>
-                            <tr>
-                                <td><strong>Synced Company Items:</strong></td>
-                                <td>${data.company_items}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                `;
-            } catch (error) {
-                document.getElementById('sync-status').innerHTML = '<p class="status-text status-text--danger">Failed to load sync status</p>';
-            }
-        }
-
         // Codex sync
         document.getElementById('sync-codex-btn').addEventListener('click', async () => {
             const btn = document.getElementById('sync-codex-btn');
@@ -139,7 +108,6 @@
                 if (data.success) {
                     pre.textContent = data.output || 'Sync completed successfully!';
                     alert('Codex sync completed successfully!');
-                    loadSyncStatus();
                 } else {
                     pre.textContent = data.error || data.message;
                     alert('Codex sync failed. Check output for details.');
@@ -233,9 +201,6 @@
                 lucide.createIcons();
             }
         });
-
-        // Load status on page load
-        loadSyncStatus();
 
         // Initialize Lucide icons
         lucide.createIcons();
