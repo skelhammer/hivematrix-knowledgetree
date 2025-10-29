@@ -22,6 +22,14 @@
         [data-theme="dark"] .toastui-editor-toolbar-group,
         [data-theme="dark"] .toastui-editor-toolbar-item-wrapper {
             background-color: var(--color-surface) !important;
+            border: none !important;
+        }
+
+        /* Remove any borders from toolbar items */
+        [data-theme="dark"] .toastui-editor-toolbar-item,
+        [data-theme="dark"] .toastui-editor-toolbar-item button {
+            border: none !important;
+            border-radius: 4px !important;
         }
 
         /* Toolbar buttons */
@@ -55,10 +63,25 @@
             box-shadow: none !important;
         }
 
-        /* Make toolbar icons white/light */
+        /* Make toolbar icons white/bright and remove borders */
         [data-theme="dark"] .toastui-editor-toolbar-icons svg,
         [data-theme="dark"] .toastui-editor-mode-switch svg {
-            filter: invert(1) brightness(0.9) !important;
+            filter: invert(1) brightness(1.5) !important;
+        }
+
+        /* Remove white/light borders around icon containers */
+        [data-theme="dark"] .toastui-editor-toolbar-icons button::before,
+        [data-theme="dark"] .toastui-editor-toolbar-icons button::after,
+        [data-theme="dark"] .toastui-editor-mode-switch button::before,
+        [data-theme="dark"] .toastui-editor-mode-switch button::after {
+            display: none !important;
+        }
+
+        /* Force button images/icons to have no border */
+        [data-theme="dark"] .toastui-editor-toolbar button img,
+        [data-theme="dark"] .toastui-editor-toolbar button svg {
+            border: none !important;
+            outline: none !important;
         }
 
         /* Force all toolbar children to be dark */
