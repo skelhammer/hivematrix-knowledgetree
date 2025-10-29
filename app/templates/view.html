@@ -79,18 +79,27 @@
 
     <div class="card">
         <div class="card__header">
-            <h2 class="card__title">Content</h2>
+            <div class="header-toolbar header-toolbar--space-between">
+                <h2 class="card__title">Content</h2>
+                <button id="edit-btn" class="btn" style="display: none;">
+                    <i data-lucide="edit"></i>
+                    <span class="btn__label">Edit Content</span>
+                </button>
+            </div>
         </div>
         <div class="card__body">
             <div id="content-display"></div>
 
-            <div id="editor-container" class="u-mt-4">
-                <h3>Edit Content</h3>
+            <div id="editor-container" style="display: none;">
                 <div id="editor"></div>
                 <div class="editor-actions">
                     <button id="save-btn" class="btn btn--primary">
                         <i data-lucide="save"></i>
                         <span class="btn__label">Save Content</span>
+                    </button>
+                    <button id="cancel-edit-btn" class="btn">
+                        <i data-lucide="x"></i>
+                        <span class="btn__label">Cancel</span>
                     </button>
                 </div>
             </div>
@@ -172,12 +181,17 @@
                     fileList.innerHTML = '<p>No files attached.</p>';
                 }
 
-                // Editor (hide if read-only)
+                // Editor setup (only if not read-only)
                 const editorContainer = document.getElementById('editor-container');
-                if (data.read_only) {
-                    editorContainer.style.display = 'none';
-                } else {
-                    editorContainer.style.display = 'block';
+                const contentDisplay = document.getElementById('content-display');
+                const editBtn = document.getElementById('edit-btn');
+                const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+                if (!data.read_only) {
+                    // Show edit button
+                    editBtn.style.display = 'inline-flex';
+
+                    // Initialize editor
                     editor = new toastui.Editor({
                         el: document.querySelector('#editor'),
                         height: '600px',
@@ -187,6 +201,25 @@
                         initialValue: data.content || ''
                     });
 
+                    // Edit button click - show editor, hide content
+                    editBtn.addEventListener('click', () => {
+                        contentDisplay.style.display = 'none';
+                        editorContainer.style.display = 'block';
+                        editBtn.style.display = 'none';
+                        lucide.createIcons(); // Reinitialize icons
+                    });
+
+                    // Cancel button click - hide editor, show content
+                    cancelEditBtn.addEventListener('click', () => {
+                        editorContainer.style.display = 'none';
+                        contentDisplay.style.display = 'block';
+                        editBtn.style.display = 'inline-flex';
+                        // Reset editor content to original
+                        editor.setMarkdown(data.content || '');
+                        lucide.createIcons(); // Reinitialize icons
+                    });
+
+                    // Save button click
                     document.getElementById('save-btn').addEventListener('click', async () => {
                         await fetch(`{{ url_for('update_node', node_id='') }}${NODE_ID}`, {
                             method: 'PUT',
@@ -198,7 +231,13 @@
                         const updatedData = await (await fetch(`{{ url_for('get_node', node_id='') }}${NODE_ID}`, {
                             credentials: 'same-origin'
                         })).json();
-                        document.getElementById('content-display').innerHTML = updatedData.content_html;
+                        contentDisplay.innerHTML = updatedData.content_html;
+
+                        // Switch back to view mode
+                        editorContainer.style.display = 'none';
+                        contentDisplay.style.display = 'block';
+                        editBtn.style.display = 'inline-flex';
+                        lucide.createIcons(); // Reinitialize icons
                     });
                 }
             } catch (error) {
