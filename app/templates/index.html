@@ -462,6 +462,7 @@
         const viewHierarchyBtn = document.getElementById('view-hierarchy');
         let currentView = 'grid'; // Default
         let originalHTML = fileBrowserElement.innerHTML; // Save original HTML for switching back
+        const basePath = window.location.pathname.startsWith('/knowledgetree/') ? '/knowledgetree' : '';
 
         // Load user's view preference from Codex
         async function loadViewPreference() {
@@ -554,12 +555,52 @@
             childrenDiv.className = 'hierarchy-children';
             childrenDiv.dataset.parentId = item.id;
 
-            // Click handler
+            // Click handler for toggle arrow
+            toggle.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                console.log('Toggle clicked for:', item.name, 'is_folder:', item.is_folder);
+
+                if (!item.is_folder) return;
+
+                // Toggle children
+                const isExpanded = childrenDiv.classList.contains('hierarchy-children--expanded');
+
+                if (isExpanded) {
+                    childrenDiv.classList.remove('hierarchy-children--expanded');
+                    toggle.textContent = '▶';
+                } else {
+                    // Load children if not loaded yet
+                    if (childrenDiv.children.length === 0) {
+                        console.log('Loading children for:', item.id);
+                        const url = `${basePath}/api/node/${item.id}/children`;
+                        console.log('Fetching from:', url);
+                        const response = await fetch(url, {
+                            credentials: 'same-origin'
+                        });
+                        console.log('Response status:', response.status);
+                        if (response.ok) {
+                            const children = await response.json();
+                            console.log('Got children:', children);
+                            for (const child of children) {
+                                await createHierarchyItem(child, childrenDiv, level + 1);
+                            }
+                        } else {
+                            console.error('Failed to load children:', response.status);
+                        }
+                    }
+                    childrenDiv.classList.add('hierarchy-children--expanded');
+                    toggle.textContent = '▼';
+                }
+            });
+
+            // Click handler for the item itself
             itemDiv.addEventListener('click', async (e) => {
                 e.stopPropagation();
 
-                if (e.target === toggle && item.is_folder) {
-                    // Toggle children
+                if (item.is_folder) {
+                    // For folders: expand/collapse instead of navigating
                     const isExpanded = childrenDiv.classList.contains('hierarchy-children--expanded');
 
                     if (isExpanded) {
@@ -568,28 +609,29 @@
                     } else {
                         // Load children if not loaded yet
                         if (childrenDiv.children.length === 0) {
-                            const response = await fetch(`{{ url_for('get_node_children', node_id='') }}${item.id}`, {
+                            console.log('Loading children for:', item.id);
+                            const url = `${basePath}/api/node/${item.id}/children`;
+                            console.log('Fetching from:', url);
+                            const response = await fetch(url, {
                                 credentials: 'same-origin'
                             });
+                            console.log('Response status:', response.status);
                             if (response.ok) {
                                 const children = await response.json();
+                                console.log('Got children:', children);
                                 for (const child of children) {
                                     await createHierarchyItem(child, childrenDiv, level + 1);
                                 }
+                            } else {
+                                console.error('Failed to load children:', response.status);
                             }
                         }
                         childrenDiv.classList.add('hierarchy-children--expanded');
                         toggle.textContent = '▼';
                     }
                 } else {
-                    // Navigate or open item
-                    if (item.is_folder) {
-                        const itemName = item.name;
-                        const newPath = CURRENT_PATH ? `${CURRENT_PATH}/${encodeURIComponent(itemName)}` : encodeURIComponent(itemName);
-                        window.location.href = `{{ url_for('browse', path='') }}${newPath}`;
-                    } else {
-                        window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
-                    }
+                    // For files: navigate to view
+                    window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
                 }
             });
 
