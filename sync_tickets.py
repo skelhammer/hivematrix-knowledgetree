@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import app
 from app.service_client import call_service
+from sync_utils import ensure_node
 
 def get_config():
     """Loads configuration from knowledgetree.conf."""
@@ -32,29 +33,6 @@ def get_config():
     config = configparser.RawConfigParser()
     config.read(config_path)
     return config
-
-def ensure_node(session, parent_id, name, is_folder=True, is_attached=False, content='', read_only=True):
-    """Creates or updates a node in Neo4j."""
-    node_id = f"{parent_id}_{name.replace(' ', '_').replace('/', '_')}"
-
-    result = session.run("""
-        MATCH (parent:ContextItem {id: $parent_id})
-        MERGE (parent)-[r:PARENT_OF]->(node:ContextItem {id: $node_id})
-        ON CREATE SET node.name = $name,
-                      node.is_folder = $is_folder,
-                      node.is_attached = $is_attached,
-                      node.content = $content,
-                      node.read_only = $read_only
-        ON MATCH SET  node.name = $name,
-                      node.is_folder = $is_folder,
-                      node.is_attached = $is_attached,
-                      node.content = $content,
-                      node.read_only = $read_only
-        RETURN node.id as id
-    """, parent_id=parent_id, node_id=node_id, name=name, is_folder=is_folder,
-         is_attached=is_attached, content=content, read_only=read_only).single()
-
-    return result['id']
 
 def get_user_node_id(session, user_email):
     """Find the KnowledgeTree node ID for a user by email."""
