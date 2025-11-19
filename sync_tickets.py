@@ -167,7 +167,7 @@ def sync_tickets_from_codex(driver):
                     # Ensure Tickets folder exists
                     try:
                         ensure_node(session, company_id, 'Tickets', is_folder=True, is_attached=True)
-                    except:
+                    except Exception:
                         # Company folder might not exist yet - skip this ticket
                         continue
 
