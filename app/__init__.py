@@ -8,6 +8,11 @@ load_dotenv('.flaskenv')
 
 app = Flask(__name__, instance_relative_config=True)
 
+# Configure logging level from environment
+import logging
+log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()
+app.logger.setLevel(getattr(logging, log_level, logging.INFO))
+
 # --- Explicitly load all required configuration from environment variables ---
 app.config['CORE_SERVICE_URL'] = os.environ.get('CORE_SERVICE_URL')
 app.config['SERVICE_NAME'] = os.environ.get('SERVICE_NAME', 'knowledgetree')
