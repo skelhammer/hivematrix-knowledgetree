@@ -120,4 +120,4 @@ helm_logger = init_helm_logger(
 from app import routes
 
 # Log service startup
-helm_logger.info(f"{app.config["SERVICE_NAME"]} service started")
+helm_logger.info(f"{app.config['SERVICE_NAME']} service started")
