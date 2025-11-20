@@ -638,8 +638,7 @@ def admin_settings():
     settings = {
         'neo4j_uri': config.get('database', 'neo4j_uri', fallback='Not configured'),
         'codex_url': config.get('codex', 'url', fallback='Not configured'),
-        'freshservice_domain': config.get('freshservice', 'domain', fallback='Not configured'),
-        'freshservice_configured': bool(config.get('freshservice', 'domain', fallback=''))
+        'codex_configured': bool(config.get('codex', 'url', fallback=''))
     }
 
     return render_template('admin/settings.html', settings=settings, user=g.user)
@@ -687,15 +686,15 @@ def admin_sync_codex():
 @app.route('/admin/sync/tickets', methods=['POST'])
 @admin_required
 def admin_sync_tickets():
-    """Trigger Freshservice ticket sync."""
+    """Trigger ticket sync from Codex."""
     import subprocess
     import sys
 
     config = current_app.config['KT_CONFIG']
-    if not config.get('freshservice', 'domain', fallback=''):
+    if not config.get('codex', 'url', fallback=''):
         return jsonify({
             'success': False,
-            'message': 'Freshservice is not configured'
+            'message': 'Codex is not configured'
         }), 400
 
     data = request.json or {}

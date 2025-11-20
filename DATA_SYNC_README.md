@@ -4,7 +4,7 @@
 
 **KnowledgeTree is a knowledge management service that pulls all data from Codex via API.**
 
-KnowledgeTree does NOT sync directly from external services (Freshservice, Datto RMM). All data comes from the Codex service.
+KnowledgeTree does NOT sync directly from external services (PSA systems, Datto RMM). All data comes from the Codex service.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ KnowledgeTree (Knowledge Management)
 
 ## Data Flow
 
-1. **Codex** syncs from external sources (Freshservice, Datto)
+1. **Codex** syncs from external sources (PSA systems, Datto)
 2. **KnowledgeTree** pulls from Codex API endpoints
 3. **Neo4j** stores structured knowledge graph
 4. **Users** access knowledge through KnowledgeTree UI
@@ -50,7 +50,7 @@ KnowledgeTree (Knowledge Management)
 
 ### Deprecated Scripts
 
-❌ **`sync_tickets.py.deprecated`** - Old version that accessed Freshservice directly
+❌ **`sync_tickets.py.deprecated`** - Old version that accessed PSA directly
 - DO NOT USE - replaced with Codex-based version
 
 ## How to Sync Data
@@ -78,7 +78,7 @@ python sync_tickets.py
 
 1. First, ensure **Codex has fresh data**:
    - Log into Codex admin dashboard
-   - Run Freshservice, Datto, and Ticket syncs
+   - Run PSA, Datto, and Ticket syncs
 
 2. Then sync **KnowledgeTree**:
    ```bash
@@ -172,7 +172,7 @@ KnowledgeTree creates a hierarchical structure in Neo4j:
 ✅ **Single source of truth** - All data originates from Codex
 ✅ **No duplicate API calls** - Codex handles rate limits and caching
 ✅ **Consistent data** - Same data across all HiveMatrix services
-✅ **Simpler configuration** - Only need Codex URL, not Freshservice/Datto credentials
+✅ **Simpler configuration** - Only need Codex URL, not PSA/Datto credentials
 ✅ **Better performance** - Codex optimizes bulk data fetching
 
 ## Troubleshooting
@@ -198,7 +198,7 @@ KnowledgeTree creates a hierarchical structure in Neo4j:
 3. Ensure `sync_codex.py` ran successfully first (creates company structure)
 4. Check Neo4j logs for any errors
 
-### Old ticket data (from Freshservice direct sync)
+### Old ticket data (from PSA direct sync)
 
 The old `sync_tickets.py.deprecated` is no longer used. To clean up:
 
@@ -225,7 +225,7 @@ Since KnowledgeTree pulls from Codex, sync frequency depends on how often Codex 
 
 ## Migration Notes
 
-### Migrating from direct Freshservice access:
+### Migrating from direct PSA access:
 
 1. **Ensure Codex is syncing properly** - Verify data in Codex first
 2. **Stop using old sync scripts** - `sync_tickets.py.deprecated`
@@ -235,7 +235,7 @@ Since KnowledgeTree pulls from Codex, sync frequency depends on how often Codex 
 
 ### Data Cleanup (if needed)
 
-If you have old data from direct Freshservice syncs and want a clean slate:
+If you have old data from direct PSA syncs and want a clean slate:
 
 ```cypher
 // Connect to Neo4j and run:
