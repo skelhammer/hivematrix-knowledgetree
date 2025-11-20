@@ -117,6 +117,16 @@ helm_logger = init_helm_logger(
     app.config["HELM_SERVICE_URL"]
 )
 
+from app.version import VERSION, SERVICE_NAME as VERSION_SERVICE_NAME
+
+# Context processor to inject version into all templates
+@app.context_processor
+def inject_version():
+    return {
+        'app_version': VERSION,
+        'app_service_name': VERSION_SERVICE_NAME
+    }
+
 from app import routes
 
 # Log service startup
