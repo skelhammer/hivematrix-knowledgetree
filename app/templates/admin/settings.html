@@ -22,6 +22,9 @@
         </div>
     </div>
 
+    {# Toast container for notifications #}
+    <div class="toast-container" id="toast-container"></div>
+
     <div class="card">
         <div class="card__header">
             <h2 class="card__title">Data Synchronization</h2>
@@ -86,6 +89,22 @@
     </div>
 
     <script>
+        // Toast notification functions
+        function dismissToast(toast) {
+            toast.classList.add('toast--hiding');
+            setTimeout(() => toast.remove(), 300);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast--${type}`;
+            toast.textContent = message;
+            toast.onclick = () => dismissToast(toast);
+            container.appendChild(toast);
+            setTimeout(() => dismissToast(toast), 5000);
+        }
+
         // Codex sync
         document.getElementById('sync-codex-btn').addEventListener('click', async () => {
             const btn = document.getElementById('sync-codex-btn');
@@ -107,14 +126,14 @@
 
                 if (data.success) {
                     pre.textContent = data.output || 'Sync completed successfully!';
-                    alert('Codex sync completed successfully!');
+                    showToast('Codex sync completed successfully!', 'success');
                 } else {
                     pre.textContent = data.error || data.message;
-                    alert('Codex sync failed. Check output for details.');
+                    showToast('Codex sync failed. Check output for details.', 'error');
                 }
             } catch (error) {
                 pre.textContent = `Error: ${error.message}`;
-                alert('Failed to run Codex sync');
+                showToast('Failed to run Codex sync', 'error');
             } finally {
                 btn.disabled = false;
                 btn.querySelector('.btn__label').innerHTML = '<i data-lucide="database" class="btn__icon"></i>Sync from Codex';
@@ -144,13 +163,13 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    alert('Database wiped successfully!');
+                    showToast('Database wiped successfully!', 'success');
                     window.location.href = '{{ url_for("browse", path="") }}';
                 } else {
-                    alert('Failed to wipe database');
+                    showToast('Failed to wipe database', 'error');
                 }
             } catch (error) {
-                alert('Error wiping database');
+                showToast('Error wiping database', 'error');
             }
         });
 
@@ -163,7 +182,7 @@
         document.getElementById('import-data-btn').addEventListener('click', async () => {
             const file = document.getElementById('import-file-input').files[0];
             if (!file) {
-                alert('Please select a file to import.');
+                showToast('Please select a file to import', 'error');
                 return;
             }
             const confirmation = confirm('Are you sure you want to import this data? This may overwrite existing user-created content.');
@@ -188,13 +207,13 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert('Import successful!');
+                    showToast('Import successful!', 'success');
                     window.location.reload();
                 } else {
-                    alert(`An error occurred: ${result.error}`);
+                    showToast(`Import error: ${result.error}`, 'error');
                 }
             } catch (error) {
-                alert(`A network error occurred: ${error}`);
+                showToast(`Network error: ${error}`, 'error');
             } finally {
                 btn.disabled = false;
                 btn.querySelector('.btn__label').innerHTML = '<i data-lucide="upload" class="btn__icon"></i>Import User Data';

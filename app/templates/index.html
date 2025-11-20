@@ -8,10 +8,12 @@
 <body>
     <div class="card">
         <div class="card__header">
-            <h1 class="card__title">KnowledgeTree - Documentation & Knowledge Base</h1>
+            <div>
+                <h1 class="card__title u-mb-0">KnowledgeTree - Documentation & Knowledge Base</h1>
+                <p class="u-text-muted u-text-sm u-mb-0">Browse and search organizational knowledge, documentation, and technical resources.</p>
+            </div>
         </div>
         <div class="card__body">
-            <p class="u-mb-3">Browse and search organizational knowledge, documentation, and technical resources.</p>
             {% if user.permission_level == 'admin' %}
             <a href="{{ url_for('admin_settings') }}">
                 <button class="btn btn--secondary">
