@@ -21,7 +21,7 @@ hivematrix-knowledgetree/
 ├── .gitignore               # Git ignore patterns
 ├── init_db.py               # Interactive database setup script
 ├── sync_codex.py            # Sync companies/users/assets from Codex
-├── sync_tickets.py          # Sync support tickets from Freshservice
+├── sync_tickets.py          # Sync support tickets from Codex/PSA
 ├── requirements.txt         # Python dependencies
 ├── run.py                   # Production entry point (Waitress)
 ├── services.json            # Service discovery configuration
@@ -112,10 +112,6 @@ neo4j_password = your_password
 
 [codex]
 url = http://localhost:5010
-
-[freshservice]
-domain = your-domain.freshservice.com
-api_key = your_api_key
 ```
 
 **services.json**
@@ -136,7 +132,7 @@ api_key = your_api_key
 - Interactive database setup
 - Prompts for Neo4j credentials
 - Prompts for Codex URL
-- Prompts for optional Freshservice credentials
+- Prompts for Codex URL configuration
 - Tests connections
 - Saves configuration to instance/knowledgetree.conf
 
@@ -150,7 +146,7 @@ api_key = your_api_key
 - Uses consistent IDs for idempotent syncing
 
 **sync_tickets.py**
-- Fetches tickets from Freshservice API
+- Fetches tickets from Codex API
 - Finds user by email in KnowledgeTree
 - Creates ticket markdown files under user's /Tickets/ folder
 - Includes ticket details, description, and conversations
@@ -269,9 +265,9 @@ api_key = your_api_key
 - `/api/companies/<account_number>/users` - Get company users
 - `/api/companies/<account_number>/assets` - Get company assets
 
-### With Freshservice (External)
-- `/api/v2/tickets` - List tickets
-- `/api/v2/tickets/<id>` - Get ticket details
+### With Codex (Tickets)
+- `/api/companies/<account_number>/tickets` - List company tickets
+- `/api/ticket/<id>` - Get ticket details
 - `/api/v2/tickets/<id>/conversations` - Get ticket conversations
 - `/api/v2/requesters/<id>` - Get requester details
 

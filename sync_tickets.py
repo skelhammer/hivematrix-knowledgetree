@@ -3,7 +3,7 @@
 Syncs support tickets from Codex into KnowledgeTree.
 
 Creates tickets under each user's /Tickets/ attached folder.
-Pulls ticket data from Codex (which syncs from Freshservice).
+Pulls ticket data from Codex (which syncs from PSA systems).
 """
 
 import os
@@ -156,7 +156,7 @@ def sync_tickets_from_codex(driver):
 
 """
 
-                    ticket_content += "\n*Ticket data synced from Codex/Freshservice*\n"
+                    ticket_content += "\n*Ticket data synced from Codex/PSA*\n"
 
                     # Create ticket in the database
                     # For simplicity, store under Companies/{Company}/Tickets/
