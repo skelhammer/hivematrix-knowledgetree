@@ -12,6 +12,38 @@ Usage:
 
 import requests
 from flask import current_app
+import time
+import jwt
+
+# Token cache: {target_service: {'token': str, 'expires_at': float}}
+_token_cache = {}
+
+def _get_cached_token(service_name):
+    """Get cached token if valid, otherwise None."""
+    if service_name not in _token_cache:
+        return None
+
+    cache_entry = _token_cache[service_name]
+    # Check if token expires in next 60 seconds
+    if cache_entry['expires_at'] - time.time() < 60:
+        return None
+
+    return cache_entry['token']
+
+def _cache_token(service_name, token):
+    """Cache token with expiration time."""
+    try:
+        # Decode token to get expiration (without verification since we trust Core)
+        decoded = jwt.decode(token, options={"verify_signature": False})
+        expires_at = decoded.get('exp', time.time() + 300)  # Default 5 min if no exp
+    except Exception:
+        # If we can't decode, cache for 5 minutes
+        expires_at = time.time() + 300
+
+    _token_cache[service_name] = {
+        'token': token,
+        'expires_at': expires_at
+    }
 
 def call_service(service_name, path, method='GET', **kwargs):
     """
@@ -38,23 +70,30 @@ def call_service(service_name, path, method='GET', **kwargs):
 
     service_url = services[service_name]['url']
 
-    # Get a service token from Core
-    core_url = current_app.config.get('CORE_SERVICE_URL')
-    calling_service = current_app.config.get('SERVICE_NAME', 'unknown')
+    # Check for cached token first
+    token = _get_cached_token(service_name)
 
-    token_response = requests.post(
-        f"{core_url}/service-token",
-        json={
-            'calling_service': calling_service,
-            'target_service': service_name
-        },
-        timeout=5
-    )
+    if not token:
+        # Get a new service token from Core
+        core_url = current_app.config.get('CORE_SERVICE_URL')
+        calling_service = current_app.config.get('SERVICE_NAME', 'unknown')
 
-    if token_response.status_code != 200:
-        raise Exception(f"Failed to get service token from Core: {token_response.text}")
+        token_response = requests.post(
+            f"{core_url}/service-token",
+            json={
+                'calling_service': calling_service,
+                'target_service': service_name
+            },
+            timeout=5
+        )
 
-    token = token_response.json()['token']
+        if token_response.status_code != 200:
+            raise Exception(f"Failed to get service token from Core: {token_response.text}")
+
+        token = token_response.json()['token']
+
+        # Cache the token
+        _cache_token(service_name, token)
 
     # Make the request with auth header
     url = f"{service_url}{path}"
