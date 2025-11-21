@@ -4,7 +4,7 @@ import os
 import uuid
 from urllib.parse import unquote, quote
 from flask import render_template, request, jsonify, send_from_directory, send_file, redirect, g, current_app, url_for
-from app import app
+from app import app, limiter
 from app.auth import token_required, admin_required
 from app.service_client import call_service
 import markdown
@@ -678,9 +678,10 @@ def admin_sync_codex():
             'message': 'Sync timed out after 5 minutes'
         }), 500
     except Exception as e:
+        current_app.logger.error(f'Error running codex sync: {str(e)}')
         return jsonify({
             'success': False,
-            'message': f'Error running sync: {str(e)}'
+            'message': 'Internal server error'
         }), 500
 
 @app.route('/admin/sync/tickets', methods=['POST'])
@@ -731,9 +732,10 @@ def admin_sync_tickets():
             'message': 'Sync timed out after 10 minutes'
         }), 500
     except Exception as e:
+        current_app.logger.error(f'Error running ticket sync: {str(e)}')
         return jsonify({
             'success': False,
-            'message': f'Error running sync: {str(e)}'
+            'message': 'Internal server error'
         }), 500
 
 @app.route('/admin/sync/status', methods=['GET'])
@@ -802,7 +804,8 @@ def admin_export():
             return send_file(export_file_path, as_attachment=True, download_name='knowledgetree_export.json')
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error(f'Error exporting data: {str(e)}')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/admin/import', methods=['POST'])
 @admin_required
@@ -865,9 +868,11 @@ def admin_import():
 
         return jsonify({'success': True, 'message': 'Import successful.'})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        current_app.logger.error(f'Error importing data: {str(e)}')
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
 
 @app.route('/health', methods=['GET'])
+@limiter.exempt
 def health_check():
     """Health check endpoint for monitoring"""
     return {
