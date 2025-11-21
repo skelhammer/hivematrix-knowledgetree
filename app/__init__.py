@@ -107,6 +107,17 @@ app.wsgi_app = ProxyFix(
     x_prefix=1  # Trust X-Forwarded-Prefix (sets SCRIPT_NAME)
 )
 
+# Initialize rate limiter
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per hour", "50 per minute"],
+    storage_uri="memory://"
+)
+
 # Initialize Helm logger for centralized logging
 app.config["SERVICE_NAME"] = os.environ.get("SERVICE_NAME", "knowledgetree")
 app.config["HELM_SERVICE_URL"] = os.environ.get("HELM_SERVICE_URL", "http://localhost:5004")
