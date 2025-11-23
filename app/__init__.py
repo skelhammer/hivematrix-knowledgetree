@@ -145,6 +145,53 @@ def inject_version():
         'app_service_name': VERSION_SERVICE_NAME
     }
 
+# Register RFC 7807 error handlers for consistent API error responses
+from app.error_responses import (
+    internal_server_error,
+    not_found,
+    bad_request,
+    unauthorized,
+    forbidden,
+    service_unavailable
+)
+
+@app.errorhandler(400)
+def handle_bad_request(e):
+    """Handle 400 Bad Request errors"""
+    return bad_request(detail=str(e))
+
+@app.errorhandler(401)
+def handle_unauthorized(e):
+    """Handle 401 Unauthorized errors"""
+    return unauthorized(detail=str(e))
+
+@app.errorhandler(403)
+def handle_forbidden(e):
+    """Handle 403 Forbidden errors"""
+    return forbidden(detail=str(e))
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    """Handle 404 Not Found errors"""
+    return not_found(detail=str(e))
+
+@app.errorhandler(500)
+def handle_internal_error(e):
+    """Handle 500 Internal Server Error"""
+    app.logger.error(f"Internal server error: {e}")
+    return internal_server_error()
+
+@app.errorhandler(503)
+def handle_service_unavailable(e):
+    """Handle 503 Service Unavailable errors"""
+    return service_unavailable(detail=str(e))
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    """Catch-all handler for unexpected exceptions"""
+    app.logger.exception(f"Unexpected error: {e}")
+    return internal_server_error(detail="An unexpected error occurred")
+
 from app import routes
 
 # Log service startup
