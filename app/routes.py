@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 import os
+import sys
 import uuid
 from urllib.parse import unquote, quote
 from flask import render_template, request, jsonify, send_from_directory, send_file, redirect, g, current_app, url_for
@@ -8,6 +9,10 @@ from app import app, limiter
 from app.auth import token_required, admin_required
 from app.service_client import call_service
 import markdown
+
+# Health check library
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from health_check import HealthChecker
 
 # --- Helper Functions ---
 def get_neo4j_driver():
@@ -874,8 +879,28 @@ def admin_import():
 @app.route('/health', methods=['GET'])
 @limiter.exempt
 def health_check():
-    """Health check endpoint for monitoring"""
-    return {
-        'status': 'healthy',
-        'timestamp': datetime.utcnow().isoformat()
-    }
+    """
+    Comprehensive health check endpoint.
+
+    Checks:
+    - Neo4j database connectivity
+    - Disk space
+    - Core and Codex service availability
+
+    Returns:
+        JSON: Detailed health status with HTTP 200 (healthy) or 503 (unhealthy/degraded)
+    """
+    # Get Neo4j driver
+    neo4j_driver = current_app.config.get('NEO4J_DRIVER')
+
+    # Initialize health checker
+    health_checker = HealthChecker(
+        service_name='knowledgetree',
+        neo4j_driver=neo4j_driver,
+        dependencies=[
+            ('core', 'http://localhost:5000'),
+            ('codex', 'http://localhost:5010')
+        ]
+    )
+
+    return health_checker.get_health()
