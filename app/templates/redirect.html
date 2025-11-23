@@ -1,14 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url={{ target_url }}">
-    <title>Redirecting...</title>
-</head>
-<body>
-    <p>Redirecting to <a href="{{ target_url }}">KnowledgeTree</a>...</p>
-    <div class="version-footer">
-        <span class="version-footer__text">{{ app_service_name }} v{{ app_version }}</span>
+{% extends "layout.html" %}
+
+{% block head %}
+<meta http-equiv="refresh" content="0; url={{ target_url }}">
+{% endblock %}
+
+{% block title %}Redirecting...{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card__body">
+        <p>Redirecting to <a href="{{ target_url }}">KnowledgeTree</a>...</p>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
