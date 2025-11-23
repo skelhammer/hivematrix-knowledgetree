@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>KnowledgeTree</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body>
-    <div class="card">
+{% extends "layout.html" %}
+
+{% block title %}KnowledgeTree{% endblock %}
+
+{% block content %}
+<div class="card">
         <div class="card__header">
             <div>
                 <h1 class="card__title u-mb-0">KnowledgeTree - Documentation & Knowledge Base</h1>
@@ -129,8 +126,10 @@
     </div>
 
     <div id="search-results" class="dropdown"></div>
+{% endblock %}
 
-    <script>
+{% block scripts %}
+<script>
         const CURRENT_PATH = "{{ current_path }}";
         const CURRENT_NODE_ID = "{{ current_node_id }}";
 
@@ -920,12 +919,5 @@
 
         // Load preference on page load
         loadViewPreference();
-
-        // Initialize Lucide icons
-        lucide.createIcons();
-    </script>
-    <div class="version-footer">
-        <span class="version-footer__text">{{ app_service_name }} v{{ app_version }}</span>
-    </div>
-</body>
-</html>
+</script>
+{% endblock %}
