@@ -282,7 +282,7 @@ def init_db(non_interactive=False):
         print("\n" + "="*70)
         print("IMPORTANT: KnowledgeTree pulls data from Codex, not external services")
         print("="*70)
-        print("Codex syncs from PSA/Datto and provides data to KnowledgeTree")
+        print("Codex syncs from PSA/RMM providers and provides data to KnowledgeTree")
         print("Configure Codex connection above, then run sync scripts:")
         print("  - sync_codex.py (company structure)")
         print("  - sync_tickets.py (ticket data from Codex)")
