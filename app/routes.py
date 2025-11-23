@@ -135,7 +135,60 @@ def uploaded_file(filename):
 @app.route('/api/search', methods=['GET'])
 @token_required
 def search_nodes():
-    """Search for nodes in the tree."""
+    """Search for knowledge base articles and folders.
+    ---
+    tags:
+      - Knowledge Base
+    summary: Search knowledge base
+    description: |
+      Searches the knowledge base graph for nodes (articles, folders) matching the query.
+      Searches both node names and content for matches.
+
+      Returns up to 15 results with full path information for navigation.
+    security:
+      - Bearer: []
+    parameters:
+      - name: query
+        in: query
+        type: string
+        required: true
+        description: Search query string (case-insensitive)
+        example: "email configuration"
+      - name: start_node_id
+        in: query
+        type: string
+        required: false
+        default: "root"
+        description: Node ID to start search from (for scoped searches)
+        example: "root"
+    responses:
+      200:
+        description: Search results returned successfully
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "kb-article-123"
+              name:
+                type: string
+                example: "Email Configuration Guide"
+              is_folder:
+                type: boolean
+                example: false
+              folder_path:
+                type: string
+                description: Human-readable path to the node
+                example: "IT Documentation / Email / Configuration"
+              url_path:
+                type: string
+                description: URL-encoded path for navigation
+                example: "IT%20Documentation/Email/Configuration"
+      401:
+        description: Unauthorized - Invalid or missing JWT token
+    """
     query = request.args.get('query', '')
     start_node_id = request.args.get('start_node_id', 'root')
 
