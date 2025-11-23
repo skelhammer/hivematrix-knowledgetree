@@ -100,6 +100,17 @@ def call_service(service_name, path, method='GET', **kwargs):
     headers = kwargs.pop('headers', {})
     headers['Authorization'] = f'Bearer {token}'
 
+    # Pass correlation ID for distributed tracing
+    try:
+        from flask import g, has_request_context
+        if has_request_context() and hasattr(g, 'correlation_id'):
+            headers['X-Correlation-ID'] = g.correlation_id
+    except (ImportError, RuntimeError):
+        pass
+
+    # Set default timeout if not specified (prevents hanging requests)
+    kwargs.setdefault('timeout', 30)
+
     response = requests.request(
         method=method,
         url=url,
