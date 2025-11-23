@@ -8,3 +8,4 @@ neo4j==5.14.0
 markdown==3.5.1
 markdownify==0.11.6
 waitress==2.1.2
+flasgger==0.9.7.1

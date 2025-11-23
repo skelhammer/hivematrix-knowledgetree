@@ -192,6 +192,47 @@ def handle_unexpected_error(e):
     app.logger.exception(f"Unexpected error: {e}")
     return internal_server_error(detail="An unexpected error occurred")
 
+# Configure OpenAPI/Swagger documentation
+from flasgger import Swagger
+
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec',
+            "route": '/apispec.json',
+            "rule_filter": lambda rule: True,
+            "model_filter": lambda tag: True,
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/docs"
+}
+
+swagger_template = {
+    "info": {
+        "title": f"{app.config.get('SERVICE_NAME', 'HiveMatrix')} API",
+        "description": "API documentation for HiveMatrix KnowledgeTree - Knowledge base with Neo4j graph database",
+        "version": VERSION
+    },
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'"
+        }
+    },
+    "security": [
+        {
+            "Bearer": []
+        }
+    ]
+}
+
+Swagger(app, config=swagger_config, template=swagger_template)
+
 from app import routes
 
 # Log service startup
