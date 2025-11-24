@@ -13,7 +13,7 @@
         <div class="card__body">
             {% if user.permission_level == 'admin' %}
             <a href="{{ url_for('admin_settings') }}">
-                <button class="btn btn--secondary">
+                <button class="btn btn--secondary" data-tooltip="Configure KnowledgeTree settings and manage documentation">
                     <span class="btn__label">
                         <i data-lucide="settings" class="btn__icon"></i>
                         Admin Settings
@@ -29,13 +29,13 @@
             <div class="header-toolbar">
                 {% if current_path %}
                     <a href="{{ url_for('browse', path=parent_path) }}">
-                        <button class="btn">
+                        <button class="btn" data-tooltip="Go back to parent folder">
                             <span class="btn__label">← Back</span>
                         </button>
                     </a>
                 {% endif %}
 
-                <div class="breadcrumb">
+                <div class="breadcrumb animate-breadcrumb">
                     <strong>Path:</strong>
                     <span class="breadcrumb__separator"></span>
                     <a href="{{ url_for('browse', path='') }}" class="breadcrumb__link">root</a>
@@ -58,13 +58,13 @@
                            autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
                 </div>
                 <div class="view-switcher">
-                    <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Icons">
+                    <button class="view-switcher__button view-switcher__button--active" id="view-grid" data-tooltip="Grid view - Show files as icons" data-tooltip-position="bottom">
                         <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
                     </button>
-                    <button class="view-switcher__button" id="view-tree" title="Compact">
+                    <button class="view-switcher__button" id="view-tree" data-tooltip="List view - Show files in compact list" data-tooltip-position="bottom">
                         <i data-lucide="list" style="width: 20px; height: 20px;"></i>
                     </button>
-                    <button class="view-switcher__button" id="view-hierarchy" title="Tree">
+                    <button class="view-switcher__button" id="view-hierarchy" data-tooltip="Tree view - Show folder hierarchy" data-tooltip-position="bottom">
                         <i data-lucide="folder-tree" style="width: 20px; height: 20px;"></i>
                     </button>
                 </div>
