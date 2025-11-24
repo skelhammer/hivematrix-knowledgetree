@@ -3,15 +3,14 @@
 {% block title %}KnowledgeTree{% endblock %}
 
 {% block content %}
-<div class="card">
-        <div class="card__header">
-            <div>
-                <h1 class="card__title u-mb-0">KnowledgeTree - Documentation & Knowledge Base</h1>
-                <p class="u-text-muted u-text-sm u-mb-0">Browse and search organizational knowledge, documentation, and technical resources.</p>
-            </div>
-        </div>
+<div class="page-header">
+        <h1 class="page-header__title">KnowledgeTree - Documentation & Knowledge Base</h1>
+        <p class="page-header__description">Browse and search organizational knowledge, documentation, and technical resources.</p>
+    </div>
+
+    {% if user.permission_level == 'admin' %}
+    <div class="card">
         <div class="card__body">
-            {% if user.permission_level == 'admin' %}
             <a href="{{ url_for('admin_settings') }}">
                 <button class="btn btn--secondary">
                     <span class="btn__label">
@@ -20,9 +19,9 @@
                     </span>
                 </button>
             </a>
-            {% endif %}
         </div>
     </div>
+    {% endif %}
 
     <div class="card" id="file-browser-container">
         <div class="card__header">
