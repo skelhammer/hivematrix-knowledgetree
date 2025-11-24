@@ -5,25 +5,12 @@
 {% block content %}
 <div class="page-header">
         <div class="page-header__content">
-            <h1 class="page-header__title">Documentation</h1>
-            <p class="page-header__description">Browse and search organizational knowledge, documentation, and technical resources.</p>
+            <h1 class="page-header__title">KnowledgeTree - Documentation</h1>
+        </div>
+        <div class="page-header__actions">
+            <p class="page-header__description" style="margin: 0;">Browse and search organizational knowledge, documentation, and technical resources.</p>
         </div>
     </div>
-
-    {% if user.permission_level == 'admin' %}
-    <div class="card">
-        <div class="card__body">
-            <a href="{{ url_for('admin_settings') }}">
-                <button class="btn btn--secondary">
-                    <span class="btn__label">
-                        <i data-lucide="settings" class="btn__icon"></i>
-                        Admin Settings
-                    </span>
-                </button>
-            </a>
-        </div>
-    </div>
-    {% endif %}
 
     <div class="card" id="file-browser-container">
         <div class="card__header">
@@ -47,6 +34,18 @@
                     {% endfor %}
                 </div>
             </div>
+            {% if user.permission_level == 'admin' %}
+            <div class="card__header-actions">
+                <a href="{{ url_for('admin_settings') }}">
+                    <button class="btn btn--secondary">
+                        <span class="btn__label">
+                            <i data-lucide="settings" class="btn__icon"></i>
+                            Admin Settings
+                        </span>
+                    </button>
+                </a>
+            </div>
+            {% endif %}
         </div>
         <div class="card__body u-p-2">
             <div class="u-flex" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">

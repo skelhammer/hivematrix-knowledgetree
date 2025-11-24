@@ -3,19 +3,19 @@
 {% block title %}Admin Settings{% endblock %}
 
 {% block content %}
-    <div class="card">
-        <div class="card__header">
-            <h1 class="card__title">KnowledgeTree Admin Settings</h1>
-            <div class="card__header-actions">
-                <a href="{{ url_for('browse', path='') }}">
-                    <button class="btn">
-                        <span class="btn__label">
-                            <i data-lucide="arrow-left" class="btn__icon"></i>
-                            Back to Dashboard
-                        </span>
-                    </button>
-                </a>
-            </div>
+    <div class="page-header">
+        <div class="page-header__content">
+            <h1 class="page-header__title">KnowledgeTree Admin Settings</h1>
+        </div>
+        <div class="page-header__actions">
+            <a href="{{ url_for('browse', path='') }}">
+                <button class="btn">
+                    <span class="btn__label">
+                        <i data-lucide="arrow-left" class="btn__icon"></i>
+                        Back to Dashboard
+                    </span>
+                </button>
+            </a>
         </div>
     </div>
 
