@@ -53,7 +53,8 @@
 
     /* Editor height */
     .ck-editor__editable {
-        min-height: 400px;
+        min-height: 500px;
+        max-height: calc(100vh - 400px);
     }
 </style>
 {% endblock %}
@@ -123,6 +124,7 @@
             </div>
             <!-- Article actions (hidden by default) -->
             <div class="kt-toolbar__actions" id="article-actions" style="display: none;">
+                <!-- View mode buttons -->
                 <button class="btn btn--sm btn--outline" id="btn-export-context" title="Export Context">
                     <span class="btn__label">
                         <i data-lucide="download" class="btn__icon"></i>
@@ -135,13 +137,7 @@
                         Edit
                     </span>
                 </button>
-                <button class="btn btn--sm btn--outline" id="btn-cancel-edit" style="display: none;" title="Cancel">
-                    <span class="btn__label">
-                        <i data-lucide="x" class="btn__icon"></i>
-                        Cancel
-                    </span>
-                </button>
-                <!-- Editor Mode Toggle -->
+                <!-- Edit mode buttons (order: Toggle, Export, Save, Cancel) -->
                 <div class="editor-mode-toggle" id="editor-mode-toggle" style="display: none;">
                     <button class="editor-mode-toggle__btn editor-mode-toggle__btn--active" id="btn-mode-wysiwyg" title="Rich Text Editor">
                         <i data-lucide="type" style="width: 16px; height: 16px;"></i>
@@ -152,10 +148,22 @@
                         <span>Markdown</span>
                     </button>
                 </div>
+                <button class="btn btn--sm btn--outline" id="btn-export-edit" style="display: none;" title="Export Context">
+                    <span class="btn__label">
+                        <i data-lucide="download" class="btn__icon"></i>
+                        Export
+                    </span>
+                </button>
                 <button class="btn btn--sm btn--primary" id="btn-save-article" style="display: none;" title="Save">
                     <span class="btn__label">
                         <i data-lucide="save" class="btn__icon"></i>
                         Save
+                    </span>
+                </button>
+                <button class="btn btn--sm btn--outline" id="btn-cancel-edit" style="display: none;" title="Cancel">
+                    <span class="btn__label">
+                        <i data-lucide="x" class="btn__icon"></i>
+                        Cancel
                     </span>
                 </button>
             </div>
@@ -822,11 +830,13 @@
         isEditingArticle = true;
         document.getElementById('article-display').style.display = 'none';
 
-        // Update buttons
+        // Update buttons - hide view mode, show edit mode
+        document.getElementById('btn-export-context').style.display = 'none';
         document.getElementById('btn-edit-article').style.display = 'none';
-        document.getElementById('btn-cancel-edit').style.display = '';
-        document.getElementById('btn-save-article').style.display = '';
         document.getElementById('editor-mode-toggle').style.display = 'flex';
+        document.getElementById('btn-export-edit').style.display = '';
+        document.getElementById('btn-save-article').style.display = '';
+        document.getElementById('btn-cancel-edit').style.display = '';
 
         // Determine initial editor mode based on content format (default to wysiwyg)
         const contentFormat = currentArticleData.content_format || 'html';
@@ -841,6 +851,7 @@
     }
 
     async function initWysiwygEditor() {
+        document.getElementById('article-display').style.display = 'none';
         document.getElementById('article-editor').style.display = '';
         document.getElementById('article-markdown-editor').style.display = 'none';
 
@@ -897,6 +908,7 @@
     }
 
     function initMarkdownEditor() {
+        document.getElementById('article-display').style.display = 'none';
         document.getElementById('article-editor').style.display = 'none';
         document.getElementById('article-markdown-editor').style.display = '';
 
@@ -962,11 +974,13 @@
         document.getElementById('article-editor').style.display = 'none';
         document.getElementById('article-markdown-editor').style.display = 'none';
 
-        // Update buttons
+        // Update buttons - hide edit mode, show view mode
+        document.getElementById('btn-export-context').style.display = '';
         document.getElementById('btn-edit-article').style.display = '';
-        document.getElementById('btn-cancel-edit').style.display = 'none';
-        document.getElementById('btn-save-article').style.display = 'none';
         document.getElementById('editor-mode-toggle').style.display = 'none';
+        document.getElementById('btn-export-edit').style.display = 'none';
+        document.getElementById('btn-save-article').style.display = 'none';
+        document.getElementById('btn-cancel-edit').style.display = 'none';
 
         // Destroy editor
         if (articleEditor) {
@@ -1024,6 +1038,11 @@
     // Editor mode toggle handlers
     document.getElementById('btn-mode-wysiwyg').addEventListener('click', () => switchEditorMode('wysiwyg'));
     document.getElementById('btn-mode-markdown').addEventListener('click', () => switchEditorMode('markdown'));
+
+    // Export button in edit mode (same as view mode export)
+    document.getElementById('btn-export-edit').addEventListener('click', () => {
+        document.getElementById('btn-export-context').click();
+    });
 
     // File upload handler
     document.getElementById('upload-btn').addEventListener('click', async () => {
