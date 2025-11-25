@@ -406,8 +406,8 @@
             renderSidebarNode(tree, sidebarTree, 0);
             lucide.createIcons();
 
-            // Highlight current folder
-            highlightCurrentFolder();
+            // Expand tree to current folder and highlight it
+            expandToFolder(CURRENT_NODE_ID);
         } catch (error) {
             sidebarTree.innerHTML = '<div class="kt-sidebar__error">Failed to load</div>';
         }
@@ -504,6 +504,60 @@
         if (current) current.classList.add('kt-tree-item--active');
     }
 
+    // Find path from root to a node in the tree
+    function findPathToNode(node, targetId, path = []) {
+        path.push(node.id);
+        if (node.id === targetId) return path;
+        if (node.children) {
+            for (const child of node.children) {
+                const result = findPathToNode(child, targetId, [...path]);
+                if (result) return result;
+            }
+        }
+        return null;
+    }
+
+    // Expand sidebar tree to show the current folder
+    function expandToFolder(folderId) {
+        if (!cachedFolderTree) return;
+
+        // Find path from root to the target folder
+        const path = findPathToNode(cachedFolderTree, folderId);
+        if (!path) return;
+
+        // Expand each folder in the path (except the last one which is the target)
+        for (let i = 0; i < path.length - 1; i++) {
+            const nodeId = path[i];
+            const itemElement = document.querySelector(`.kt-tree-item[data-id="${nodeId}"]`);
+            if (!itemElement) continue;
+
+            const childrenDiv = itemElement.nextElementSibling;
+            if (!childrenDiv || !childrenDiv.classList.contains('kt-tree-children')) continue;
+
+            // If not already expanded, expand it
+            if (!childrenDiv.classList.contains('kt-tree-children--expanded')) {
+                childrenDiv.classList.add('kt-tree-children--expanded');
+                sidebarExpandedFolders.add(nodeId);
+
+                const toggle = itemElement.querySelector('.kt-tree-item__toggle i');
+                if (toggle) toggle.setAttribute('data-lucide', 'chevron-down');
+
+                // Render children if not loaded
+                if (childrenDiv.children.length === 0) {
+                    const node = findNodeInTree(cachedFolderTree, nodeId);
+                    if (node && node.children) {
+                        const level = Math.floor((parseInt(itemElement.style.paddingLeft) - 12) / 16) + 1;
+                        node.children.forEach(child => renderSidebarNode(child, childrenDiv, level));
+                    }
+                }
+            }
+        }
+
+        saveSidebarState();
+        lucide.createIcons();
+        highlightCurrentFolder();
+    }
+
     // Check for unsaved changes
     function hasUnsavedChanges() {
         if (!isEditingArticle || !currentArticleData) return false;
@@ -569,7 +623,7 @@
             // Update UI
             updatePathBar(data.breadcrumb);
             updateFileList(data.children);
-            highlightCurrentFolder();
+            expandToFolder(CURRENT_NODE_ID);
 
             // Update item count
             const count = data.children.length;
