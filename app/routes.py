@@ -10,6 +10,26 @@ from app import app, limiter
 from app.auth import token_required, admin_required
 from app.service_client import call_service
 import markdown
+import bleach
+
+# HTML sanitization settings for markdown content (prevents XSS)
+ALLOWED_TAGS = [
+    'p', 'br', 'strong', 'em', 'u', 'del', 'code', 'pre',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'ol', 'li', 'blockquote', 'a', 'img',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    'hr', 'span', 'div'
+]
+ALLOWED_ATTRIBUTES = {
+    'a': ['href', 'title', 'target'],
+    'img': ['src', 'alt', 'title', 'width', 'height'],
+    'code': ['class'],  # For syntax highlighting
+    'pre': ['class'],
+    'span': ['class'],
+    'div': ['class'],
+    'th': ['align'],
+    'td': ['align'],
+}
 
 # File upload security settings
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'md', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'json', 'xml'}
@@ -393,7 +413,9 @@ def get_node(node_id):
             # Convert ~~strikethrough~~ to <del>strikethrough</del>
             import re
             content = re.sub(r'~~(.*?)~~', r'<del>\1</del>', content)
-            data['content_html'] = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
+            # Convert markdown to HTML and sanitize to prevent XSS
+            raw_html = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
+            data['content_html'] = bleach.clean(raw_html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
             data['files'] = [f for f in data.get('files', []) if f['id'] is not None]
             return jsonify(data)
         else:
