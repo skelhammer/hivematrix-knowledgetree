@@ -155,3 +155,4 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 services.json
+VERSION
