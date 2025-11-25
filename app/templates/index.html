@@ -2,922 +2,1546 @@
 
 {% block title %}KnowledgeTree{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/43.0.0/ckeditor5.css" />
+<style>
+    /* CKEditor dark mode support */
+    [data-theme="dark"] .ck.ck-editor__main>.ck-editor__editable,
+    [data-theme="dark"] .ck.ck-editor__editable:not(.ck-editor__nested-editable) {
+        background: var(--color-surface) !important;
+        color: var(--color-text-primary) !important;
+        border-color: var(--color-border-medium) !important;
+    }
+    [data-theme="dark"] .ck.ck-toolbar {
+        background: var(--color-bg-secondary) !important;
+        border-color: var(--color-border-medium) !important;
+    }
+    [data-theme="dark"] .ck.ck-button,
+    [data-theme="dark"] .ck.ck-button:not(.ck-disabled):hover {
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-button.ck-on {
+        background: var(--color-primary) !important;
+        color: white !important;
+    }
+    [data-theme="dark"] .ck.ck-dropdown__panel,
+    [data-theme="dark"] .ck.ck-list {
+        background: var(--color-surface) !important;
+        border-color: var(--color-border-medium) !important;
+    }
+    [data-theme="dark"] .ck.ck-list__item .ck-button:hover {
+        background: var(--color-hover-bg) !important;
+    }
+    [data-theme="dark"] .ck-content pre {
+        background: var(--color-bg-tertiary) !important;
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck-content code {
+        background: var(--color-bg-secondary) !important;
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-input,
+    [data-theme="dark"] .ck.ck-labeled-field-view>.ck.ck-labeled-field-view__input-wrapper>.ck.ck-input {
+        background: var(--color-surface) !important;
+        color: var(--color-text-primary) !important;
+        border-color: var(--color-border-medium) !important;
+    }
+    [data-theme="dark"] .ck.ck-balloon-panel {
+        background: var(--color-surface) !important;
+        border-color: var(--color-border-medium) !important;
+    }
+
+    /* Editor height */
+    .ck-editor__editable {
+        min-height: 400px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
-        <div class="page-header__content">
-            <h1 class="page-header__title">KnowledgeTree - Documentation</h1>
-        </div>
-        <div class="page-header__actions">
-            <p class="page-header__description" style="margin: 0;">Browse and search organizational knowledge, documentation, and technical resources.</p>
-        </div>
+    <div class="page-header__content">
+        <h1 class="page-header__title">KnowledgeTree - Knowledge Base</h1>
     </div>
+    <div class="page-header__actions">
+        <p class="page-header__description" style="margin: 0;">Documentation, procedures, and customer information</p>
+    </div>
+</div>
 
-    <div class="card" id="file-browser-container">
-        <div class="card__header">
-            <div class="header-toolbar">
-                {% if current_path %}
-                    <a href="{{ url_for('browse', path=parent_path) }}">
-                        <button class="btn">
-                            <span class="btn__label">← Back</span>
-                        </button>
-                    </a>
-                {% endif %}
-
-                <div class="breadcrumb animate-breadcrumb">
-                    <strong>Path:</strong>
-                    <span class="breadcrumb__separator"></span>
-                    <a href="{{ url_for('browse', path='') }}" class="breadcrumb__link">root</a>
-                    {% for name in breadcrumb_names[1:] %}
-                        {% set path_slice = breadcrumb_names[1:loop.index+1] %}
-                        <span class="breadcrumb__separator">/</span>
-                        <a href="{{ url_for('browse', path=(path_slice | map('quote_plus') | join('/'))) }}" class="breadcrumb__link">{{ name }}</a>
-                    {% endfor %}
-                </div>
+<div class="kt-explorer" id="file-browser-container">
+    <!-- Path Bar (spans full width) -->
+    <div class="kt-pathbar">
+        <div class="kt-pathbar__nav">
+            <button class="kt-pathbar__btn" id="nav-back" title="Back" disabled>
+                <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
+            </button>
+            <button class="kt-pathbar__btn" id="nav-forward" title="Forward" disabled>
+                <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
+            </button>
+        </div>
+        <div class="kt-pathbar__path" id="pathbar-breadcrumb">
+            <a href="#" class="kt-pathbar__segment" data-node-id="root">
+                <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+            </a>
+            {% for name in breadcrumb_names[1:] %}
+                {% set path_slice = breadcrumb_names[1:loop.index+1] %}
+                <span class="kt-pathbar__separator">/</span>
+                <a href="#" class="kt-pathbar__segment" data-node-id="">{{ name }}</a>
+            {% endfor %}
+        </div>
+        <div class="kt-pathbar__actions">
+            <div class="kt-search">
+                <i data-lucide="search" class="kt-search__icon" style="width: 16px; height: 16px;"></i>
+                <input type="search" id="search-input" placeholder="Search..." class="kt-search__input"
+                       autocomplete="off" data-start-node="{{ current_node_id }}">
             </div>
             {% if user.permission_level == 'admin' %}
-            <div class="card__header-actions">
-                <a href="{{ url_for('admin_settings') }}">
-                    <button class="btn btn--secondary">
-                        <span class="btn__label">
-                            <i data-lucide="settings" class="btn__icon"></i>
-                            Admin Settings
-                        </span>
-                    </button>
-                </a>
-            </div>
+            <a href="{{ url_for('admin_settings') }}" class="btn btn--sm btn--outline" title="Admin Settings">
+                <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
+            </a>
             {% endif %}
         </div>
-        <div class="card__body u-p-2">
-            <div class="u-flex" style="justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div class="input-group" style="width: 470px;">
-                    <select id="search-scope" class="form-group__input" style="width: 170px;">
-                        <option value="current">Current Folder</option>
-                        <option value="all">All Items</option>
-                    </select>
-                    <input type="search" id="search-input" placeholder="Search..." class="form-group__input"
-                           autocomplete="off" data-start-node="{{ current_node_id }}" style="width: 300px;">
-                </div>
-                <div class="view-switcher">
-                    <button class="view-switcher__button view-switcher__button--active" id="view-grid">
-                        <i data-lucide="grid" style="width: 20px; height: 20px;"></i>
-                    </button>
-                    <button class="view-switcher__button" id="view-tree">
-                        <i data-lucide="list" style="width: 20px; height: 20px;"></i>
-                    </button>
-                    <button class="view-switcher__button" id="view-hierarchy">
-                        <i data-lucide="folder-tree" style="width: 20px; height: 20px;"></i>
-                    </button>
-                </div>
+    </div>
+
+    <!-- Toolbar (spans full width) -->
+    <div class="kt-toolbar">
+        <div class="kt-toolbar__left">
+            <!-- File browser info -->
+            <span class="kt-toolbar__info" id="item-count">{{ items|length }} {{ 'item' if items|length == 1 else 'items' }}</span>
+            <!-- Article title (hidden by default) -->
+            <span class="kt-toolbar__title" id="article-title" style="display: none;"></span>
+        </div>
+        <div class="kt-toolbar__right">
+            <!-- File browser view switcher -->
+            <div class="view-switcher" id="view-switcher">
+                <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Grid view">
+                    <i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i>
+                </button>
+                <button class="view-switcher__button" id="view-list" title="List view">
+                    <i data-lucide="list" style="width: 18px; height: 18px;"></i>
+                </button>
             </div>
-            <div id="file-browser" class="file-browser" style="opacity: 0;">
-                {% for item in items %}
-                    <div class="file-item {% if item.read_only %}file-item--read-only{% endif %}"
-                         data-name="{{ item.name }}"
-                         data-id="{{ item.id }}"
-                         data-is-folder="{{ item.is_folder|lower }}">
+            <!-- Article actions (hidden by default) -->
+            <div class="kt-toolbar__actions" id="article-actions" style="display: none;">
+                <button class="btn btn--sm btn--outline" id="btn-export-context" title="Export Context">
+                    <span class="btn__label">
+                        <i data-lucide="download" class="btn__icon"></i>
+                        Export
+                    </span>
+                </button>
+                <button class="btn btn--sm btn--primary" id="btn-edit-article" title="Edit Article">
+                    <span class="btn__label">
+                        <i data-lucide="edit" class="btn__icon"></i>
+                        Edit
+                    </span>
+                </button>
+                <button class="btn btn--sm btn--outline" id="btn-cancel-edit" style="display: none;" title="Cancel">
+                    <span class="btn__label">
+                        <i data-lucide="x" class="btn__icon"></i>
+                        Cancel
+                    </span>
+                </button>
+                <!-- Editor Mode Toggle -->
+                <div class="editor-mode-toggle" id="editor-mode-toggle" style="display: none;">
+                    <button class="editor-mode-toggle__btn editor-mode-toggle__btn--active" id="btn-mode-wysiwyg" title="Rich Text Editor">
+                        <i data-lucide="type" style="width: 16px; height: 16px;"></i>
+                        <span>WYSIWYG</span>
+                    </button>
+                    <button class="editor-mode-toggle__btn" id="btn-mode-markdown" title="Markdown Editor">
+                        <i data-lucide="hash" style="width: 16px; height: 16px;"></i>
+                        <span>Markdown</span>
+                    </button>
+                </div>
+                <button class="btn btn--sm btn--primary" id="btn-save-article" style="display: none;" title="Save">
+                    <span class="btn__label">
+                        <i data-lucide="save" class="btn__icon"></i>
+                        Save
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Body: Sidebar + Files -->
+    <div class="kt-explorer__body">
+        <!-- Left Sidebar - Folder Tree -->
+        <aside class="kt-sidebar" id="kt-sidebar">
+            <div class="kt-sidebar__tree" id="sidebar-tree">
+                <!-- Tree will be loaded here -->
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="kt-main">
+            <!-- File Browser -->
+            <div id="file-browser" class="kt-files">
+            {% for item in items %}
+                <div class="kt-file {% if item.read_only %}kt-file--read-only{% endif %}"
+                     data-name="{{ item.name }}"
+                     data-id="{{ item.id }}"
+                     data-is-folder="{{ item.is_folder|lower }}">
+                    <span class="kt-file__icon">
                         {% if item.is_folder %}
-                            {% if item.is_attached %}
-                                <span class="file-item__icon">📎</span>
-                            {% else %}
-                                <span class="file-item__icon">📁</span>
-                            {% endif %}
+                            {% if item.is_attached %}📎{% else %}📁{% endif %}
                         {% else %}
-                            <span class="file-item__icon">📄</span>
+                            📄
                         {% endif %}
-                        <span class="file-item__name">{{ item.name }}</span>
+                    </span>
+                    <span class="kt-file__name">{{ item.name }}</span>
+                </div>
+            {% endfor %}
+            </div>
+
+            <!-- Article View (hidden by default) -->
+            <div id="article-view" class="kt-article" style="display: none;">
+                <div class="kt-article__content">
+                    <div id="article-display"></div>
+                    <div id="article-editor" style="display: none;"></div>
+                    <textarea id="article-markdown-editor" class="kt-article__markdown-editor" style="display: none;" placeholder="Enter markdown content..."></textarea>
+                </div>
+                <div class="kt-article__attachments">
+                    <h3 class="kt-article__attachments-title">Attachments</h3>
+                    <div id="article-files"></div>
+                    <div class="kt-article__upload">
+                        <input type="file" id="file-upload-input" class="form-group__input">
+                        <button id="upload-btn" class="btn btn--sm btn--outline">
+                            <span class="btn__label">
+                                <i data-lucide="upload" class="btn__icon"></i>
+                                Upload
+                            </span>
+                        </button>
                     </div>
-                {% endfor %}
+                </div>
             </div>
+        </main>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="context-menu" class="context-menu">
+    <ul class="context-menu__list">
+        <li id="context-open" class="context-menu__item context-menu__item--item-action">Open</li>
+        <li id="context-rename" class="context-menu__item context-menu__item--item-action">Rename</li>
+        <li id="context-move" class="context-menu__item context-menu__item--item-action">Move</li>
+        <li id="context-delete" class="context-menu__item context-menu__item--item-action">Delete</li>
+        <hr id="context-separator" class="context-menu__separator">
+        <li id="context-new-folder" class="context-menu__item context-menu__item--create-action">New Folder</li>
+        <li id="context-new-attached" class="context-menu__item context-menu__item--create-action">New Attached Folder</li>
+        <li id="context-new-article" class="context-menu__item context-menu__item--create-action">New Article</li>
+    </ul>
+</div>
+
+<!-- Move Modal -->
+<div id="move-modal" class="modal">
+    <div class="modal__dialog">
+        <div class="modal__header">
+            <h2 class="modal__title">Move Item</h2>
+            <span id="close-move-modal" class="modal__close">&times;</span>
+        </div>
+        <div class="modal__body">
+            <p>Select a destination folder:</p>
+            <div id="folder-list" class="u-mt-2"></div>
+        </div>
+        <div class="modal__footer">
+            <button id="cancel-move-btn" class="btn">
+                <span class="btn__label">Cancel</span>
+            </button>
+            <button id="confirm-move-btn" class="btn btn--primary">
+                <span class="btn__label">Move Here</span>
+            </button>
         </div>
     </div>
+</div>
 
-    <div id="context-menu" class="context-menu">
-        <ul class="context-menu__list">
-            <li id="context-open" class="context-menu__item context-menu__item--item-action">Open</li>
-            <li id="context-rename" class="context-menu__item context-menu__item--item-action">Rename</li>
-            <li id="context-move" class="context-menu__item context-menu__item--item-action">Move</li>
-            <li id="context-delete" class="context-menu__item context-menu__item--item-action">Delete</li>
-            <hr id="context-separator" class="context-menu__separator">
-            <li id="context-new-folder" class="context-menu__item context-menu__item--create-action">New Folder</li>
-            <li id="context-new-attached" class="context-menu__item context-menu__item--create-action">New Attached Folder</li>
-            <li id="context-new-article" class="context-menu__item context-menu__item--create-action">New Article</li>
-        </ul>
-    </div>
+<div id="search-results" class="dropdown"></div>
 
-    <div id="move-modal" class="modal">
-        <div class="modal__dialog">
-            <div class="modal__header">
-                <h2 class="modal__title">Move Item</h2>
-                <span id="close-move-modal" class="modal__close">&times;</span>
-            </div>
-            <div class="modal__body">
-                <p>Click on a folder to select it as the destination. Click the arrows to expand/collapse folders.</p>
-                <div id="folder-list" class="u-mt-2"></div>
-            </div>
-            <div class="modal__footer">
-                <button id="cancel-move-btn" class="btn">
-                    <span class="btn__label">Cancel</span>
-                </button>
-                <button id="confirm-move-btn" class="btn btn--primary">
-                    <span class="btn__label">Move Here</span>
-                </button>
-            </div>
+<!-- Export Context Modal -->
+<div id="context-modal" class="modal">
+    <div class="modal__dialog">
+        <div class="modal__header">
+            <h2 class="modal__title">Export Context</h2>
+            <span id="close-context-modal" class="modal__close">&times;</span>
+        </div>
+        <div class="modal__body">
+            <p id="modal-message">Select the items to include in the exported context.</p>
+            <div id="context-tree-container"></div>
+            <textarea id="context-textarea" readonly class="form-group__input" style="display: none; height: 400px; font-family: monospace; resize: vertical;"></textarea>
+        </div>
+        <div class="modal__footer">
+            <button id="generate-context-btn" class="btn btn--primary">
+                <span class="btn__label">
+                    <i data-lucide="copy" class="btn__icon"></i>
+                    Generate & Copy Context
+                </span>
+            </button>
         </div>
     </div>
-
-    <div id="search-results" class="dropdown"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script type="importmap">
+    {
+        "imports": {
+            "ckeditor5": "https://cdn.ckeditor.com/ckeditor5/43.0.0/ckeditor5.js",
+            "ckeditor5/": "https://cdn.ckeditor.com/ckeditor5/43.0.0/"
+        }
+    }
+</script>
+<script type="module">
+    import {
+        ClassicEditor,
+        Essentials,
+        Bold,
+        Italic,
+        Strikethrough,
+        Underline,
+        Font,
+        Paragraph,
+        Heading,
+        Link,
+        List,
+        TodoList,
+        BlockQuote,
+        Code,
+        CodeBlock,
+        Table,
+        TableToolbar,
+        TableProperties,
+        TableCellProperties,
+        Image,
+        ImageUpload,
+        ImageToolbar,
+        ImageCaption,
+        ImageStyle,
+        ImageResize,
+        MediaEmbed,
+        HorizontalLine,
+        Indent,
+        IndentBlock,
+        Alignment,
+        AutoLink,
+        Markdown
+    } from 'ckeditor5';
+
+    // Make ClassicEditor available globally for our functions
+    window.CKEditorClassicEditor = ClassicEditor;
+    window.CKEditorPlugins = {
+        Essentials, Bold, Italic, Strikethrough, Underline, Font, Paragraph, Heading,
+        Link, List, TodoList, BlockQuote, Code, CodeBlock, Table, TableToolbar,
+        TableProperties, TableCellProperties, Image, ImageUpload, ImageToolbar,
+        ImageCaption, ImageStyle, ImageResize, MediaEmbed, HorizontalLine,
+        Indent, IndentBlock, Alignment, AutoLink, Markdown
+    };
+
+    // Signal that CKEditor is loaded
+    window.CKEditorLoaded = true;
+    if (window.onCKEditorReady) window.onCKEditorReady();
+</script>
 <script>
-        const CURRENT_PATH = "{{ current_path }}";
-        const CURRENT_NODE_ID = "{{ current_node_id }}";
+    // State
+    let CURRENT_PATH = "{{ current_path }}";
+    let CURRENT_NODE_ID = "{{ current_node_id }}";
+    let CURRENT_BREADCRUMB = [
+        {% for name in breadcrumb_names %}
+        { name: "{{ name }}", id: "{{ current_node_id if loop.last else 'root' }}" }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
 
-        // File browser interactions
-        const fileBrowser = document.getElementById('file-browser');
-        const contextMenu = document.getElementById('context-menu');
-        let selectedItemId = null;
-        let createParentId = null; // Track parent folder for creating new items
+    const basePath = window.location.pathname.startsWith('/knowledgetree/') ? '/knowledgetree' : '';
+    const fileBrowser = document.getElementById('file-browser');
+    const articleView = document.getElementById('article-view');
+    const contextMenu = document.getElementById('context-menu');
+    const sidebarTree = document.getElementById('sidebar-tree');
 
-        // Function to attach click handlers to file items
-        function attachFileItemHandlers() {
-            fileBrowser.querySelectorAll('.file-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const isFolder = item.dataset.isFolder === 'true';
-                    const id = item.dataset.id;
-                    const name = item.dataset.name;
+    let selectedItemId = null;
+    let createParentId = null;
+    let currentView = 'grid';
+    let cachedFolderTree = null;
+    let sidebarExpandedFolders = new Set();
+    let navigationHistory = [];
+    let historyIndex = -1;
 
-                    if (isFolder) {
-                        const newPath = CURRENT_PATH ? `${CURRENT_PATH}/${encodeURIComponent(name)}` : encodeURIComponent(name);
-                        window.location.href = `{{ url_for('browse', path='') }}${newPath}`;
-                    } else {
-                        window.location.href = `{{ url_for('view_node', node_id='') }}${id}`;
-                    }
-                });
+    // Article state
+    let currentArticleId = null;
+    let currentArticleData = null;
+    let articleEditor = null;
+    let isEditingArticle = false;
+    let editorMode = 'wysiwyg'; // 'wysiwyg' or 'markdown'
+
+    // Load sidebar expanded state
+    function loadSidebarState() {
+        try {
+            const saved = sessionStorage.getItem('kt_sidebar_expanded');
+            if (saved) sidebarExpandedFolders = new Set(JSON.parse(saved));
+        } catch (e) {}
+    }
+
+    function saveSidebarState() {
+        try {
+            sessionStorage.setItem('kt_sidebar_expanded', JSON.stringify([...sidebarExpandedFolders]));
+        } catch (e) {}
+    }
+
+    loadSidebarState();
+
+    // Initialize sidebar tree
+    async function initSidebar() {
+        sidebarTree.innerHTML = '<div class="kt-sidebar__loading">Loading...</div>';
+
+        try {
+            const response = await fetch(`${basePath}/api/folders/tree`, { credentials: 'same-origin' });
+            const tree = await response.json();
+            cachedFolderTree = tree;
+
+            sidebarTree.innerHTML = '';
+            renderSidebarNode(tree, sidebarTree, 0);
+            lucide.createIcons();
+
+            // Highlight current folder
+            highlightCurrentFolder();
+        } catch (error) {
+            sidebarTree.innerHTML = '<div class="kt-sidebar__error">Failed to load</div>';
+        }
+    }
+
+    function renderSidebarNode(node, container, level) {
+        const item = document.createElement('div');
+        item.className = 'kt-tree-item';
+        item.dataset.id = node.id;
+        item.dataset.name = node.name;
+        item.style.paddingLeft = `${12 + level * 16}px`;
+
+        const hasChildren = node.children && node.children.length > 0;
+        const isExpanded = sidebarExpandedFolders.has(node.id);
+
+        item.innerHTML = `
+            <span class="kt-tree-item__toggle ${hasChildren ? '' : 'kt-tree-item__toggle--empty'}">
+                ${hasChildren ? `<i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" style="width: 14px; height: 14px;"></i>` : ''}
+            </span>
+            <span class="kt-tree-item__icon">${node.is_attached ? '📎' : '📁'}</span>
+            <span class="kt-tree-item__name">${node.name === 'KnowledgeTree Root' ? 'Root' : node.name}</span>
+        `;
+
+        // Click to navigate
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (e.target.closest('.kt-tree-item__toggle') && hasChildren) {
+                toggleSidebarNode(node.id, item);
+            } else {
+                navigateToFolder(node.id);
+            }
+        });
+
+        container.appendChild(item);
+
+        // Children container
+        if (hasChildren) {
+            const childrenDiv = document.createElement('div');
+            childrenDiv.className = `kt-tree-children ${isExpanded ? 'kt-tree-children--expanded' : ''}`;
+            childrenDiv.dataset.parentId = node.id;
+
+            if (isExpanded) {
+                node.children.forEach(child => renderSidebarNode(child, childrenDiv, level + 1));
+            }
+
+            container.appendChild(childrenDiv);
+        }
+    }
+
+    function toggleSidebarNode(nodeId, itemElement) {
+        const childrenDiv = itemElement.nextElementSibling;
+        if (!childrenDiv || !childrenDiv.classList.contains('kt-tree-children')) return;
+
+        const isExpanded = childrenDiv.classList.contains('kt-tree-children--expanded');
+        const toggle = itemElement.querySelector('.kt-tree-item__toggle i');
+
+        if (isExpanded) {
+            childrenDiv.classList.remove('kt-tree-children--expanded');
+            sidebarExpandedFolders.delete(nodeId);
+            if (toggle) toggle.setAttribute('data-lucide', 'chevron-right');
+        } else {
+            childrenDiv.classList.add('kt-tree-children--expanded');
+            sidebarExpandedFolders.add(nodeId);
+            if (toggle) toggle.setAttribute('data-lucide', 'chevron-down');
+
+            // Load children if not loaded
+            if (childrenDiv.children.length === 0) {
+                const node = findNodeInTree(cachedFolderTree, nodeId);
+                if (node && node.children) {
+                    const level = parseInt(itemElement.style.paddingLeft) / 16;
+                    node.children.forEach(child => renderSidebarNode(child, childrenDiv, level));
+                }
+            }
+        }
+
+        saveSidebarState();
+        lucide.createIcons();
+    }
+
+    function findNodeInTree(node, id) {
+        if (node.id === id) return node;
+        if (node.children) {
+            for (const child of node.children) {
+                const found = findNodeInTree(child, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    function highlightCurrentFolder() {
+        document.querySelectorAll('.kt-tree-item--active').forEach(el => el.classList.remove('kt-tree-item--active'));
+        const current = document.querySelector(`.kt-tree-item[data-id="${CURRENT_NODE_ID}"]`);
+        if (current) current.classList.add('kt-tree-item--active');
+    }
+
+    // Check for unsaved changes
+    function hasUnsavedChanges() {
+        if (!isEditingArticle || !currentArticleData) return false;
+
+        if (editorMode === 'wysiwyg' && articleEditor) {
+            const currentContent = articleEditor.getData();
+            const originalContent = currentArticleData.content_html || '';
+            return currentContent !== originalContent;
+        } else if (editorMode === 'markdown') {
+            const currentContent = document.getElementById('article-markdown-editor').value;
+            const originalContent = currentArticleData.content_markdown || currentArticleData.content || '';
+            return currentContent !== originalContent;
+        }
+
+        return false;
+    }
+
+    async function promptUnsavedChanges() {
+        if (!hasUnsavedChanges()) return true;
+
+        const choice = confirm('You have unsaved changes. Do you want to save before leaving?\n\nClick OK to save, or Cancel to discard changes.');
+        if (choice) {
+            await saveArticle();
+        }
+        return true; // Always allow navigation after prompt
+    }
+
+    // Navigation
+    async function navigateToFolder(folderId, addToHistory = true) {
+        // Check for unsaved changes first
+        if (currentArticleId && isEditingArticle) {
+            await promptUnsavedChanges();
+        }
+
+        // Close any open article
+        if (currentArticleId) {
+            closeArticle();
+        }
+
+        try {
+            const response = await fetch(`${basePath}/api/node/${folderId}/browse`, { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Failed to load');
+
+            const data = await response.json();
+
+            // Update state
+            CURRENT_NODE_ID = data.id;
+            CURRENT_PATH = data.url_path;
+            CURRENT_BREADCRUMB = data.breadcrumb;
+
+            // Update history
+            if (addToHistory) {
+                navigationHistory = navigationHistory.slice(0, historyIndex + 1);
+                navigationHistory.push({ nodeId: data.id, path: data.url_path });
+                historyIndex = navigationHistory.length - 1;
+                updateNavButtons();
+            }
+
+            // Update URL
+            const newUrl = `${basePath}/browse/${data.url_path}`;
+            window.history.pushState({ nodeId: data.id, path: data.url_path }, data.name, newUrl);
+
+            // Update UI
+            updatePathBar(data.breadcrumb);
+            updateFileList(data.children);
+            highlightCurrentFolder();
+
+            // Update item count
+            const count = data.children.length;
+            document.getElementById('item-count').textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+
+        } catch (error) {
+            console.error('Navigation error:', error);
+            window.location.href = `${basePath}/browse/${CURRENT_PATH}`;
+        }
+    }
+
+    function updateNavButtons() {
+        document.getElementById('nav-back').disabled = historyIndex <= 0;
+        document.getElementById('nav-forward').disabled = historyIndex >= navigationHistory.length - 1;
+    }
+
+    document.getElementById('nav-back').addEventListener('click', async () => {
+        if (historyIndex > 0) {
+            // Check for unsaved changes
+            if (isEditingArticle) {
+                await promptUnsavedChanges();
+            }
+            historyIndex--;
+            const entry = navigationHistory[historyIndex];
+            if (entry.isArticle) {
+                openArticle(entry.nodeId, false);
+            } else {
+                closeArticle();
+                navigateToFolder(entry.nodeId, false);
+            }
+            updateNavButtons();
+        }
+    });
+
+    document.getElementById('nav-forward').addEventListener('click', async () => {
+        if (historyIndex < navigationHistory.length - 1) {
+            // Check for unsaved changes
+            if (isEditingArticle) {
+                await promptUnsavedChanges();
+            }
+            historyIndex++;
+            const entry = navigationHistory[historyIndex];
+            if (entry.isArticle) {
+                openArticle(entry.nodeId, false);
+            } else {
+                closeArticle();
+                navigateToFolder(entry.nodeId, false);
+            }
+            updateNavButtons();
+        }
+    });
+
+    // Path bar
+    function updatePathBar(breadcrumb) {
+        const pathbar = document.getElementById('pathbar-breadcrumb');
+        let html = `<a href="#" class="kt-pathbar__segment" data-node-id="root">
+            <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+        </a>`;
+
+        breadcrumb.slice(1).forEach((item, index) => {
+            html += `<span class="kt-pathbar__separator">/</span>`;
+            html += `<a href="#" class="kt-pathbar__segment" data-node-id="${item.id}">${item.name}</a>`;
+        });
+
+        pathbar.innerHTML = html;
+        lucide.createIcons();
+
+        // Attach handlers
+        pathbar.querySelectorAll('.kt-pathbar__segment').forEach(seg => {
+            seg.addEventListener('click', (e) => {
+                e.preventDefault();
+                const nodeId = seg.dataset.nodeId;
+                if (nodeId && nodeId !== CURRENT_NODE_ID) navigateToFolder(nodeId);
             });
-        }
+        });
+    }
 
-        // Initial attachment
-        if (fileBrowser) {
-            attachFileItemHandlers();
-        }
+    // File list
+    function updateFileList(children) {
+        fileBrowser.innerHTML = '';
 
-        // Context menu
-        document.getElementById('file-browser-container').addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            // Support both file-item (grid/tree view) and hierarchy-item (hierarchy view)
-            const targetItem = e.target.closest('.file-item') || e.target.closest('.hierarchy-item');
+        children.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'kt-file';
+            if (item.read_only) div.classList.add('kt-file--read-only');
+            div.dataset.name = item.name;
+            div.dataset.id = item.id;
+            div.dataset.isFolder = item.is_folder;
 
-            // Get menu items
-            const itemActions = document.querySelectorAll('.context-menu__item--item-action');
-            const createActions = document.querySelectorAll('.context-menu__item--create-action');
-            const separator = document.getElementById('context-separator');
+            let icon = '📄';
+            if (item.is_folder) icon = item.is_attached ? '📎' : '📁';
 
-            if (targetItem) {
-                // Right-clicked on an item
-                document.querySelectorAll('.file-item, .hierarchy-item').forEach(el => {
-                    el.classList.remove('file-item--selected', 'hierarchy-item--selected');
-                });
-                targetItem.classList.add(targetItem.classList.contains('hierarchy-item') ? 'hierarchy-item--selected' : 'file-item--selected');
-                selectedItemId = targetItem.dataset.id;
+            div.innerHTML = `
+                <span class="kt-file__icon">${icon}</span>
+                <span class="kt-file__name">${item.name}</span>
+            `;
 
-                const isFolder = targetItem.dataset.isFolder === 'true';
+            fileBrowser.appendChild(div);
+        });
+
+        attachFileItemHandlers();
+    }
+
+    function attachFileItemHandlers() {
+        fileBrowser.querySelectorAll('.kt-file').forEach(item => {
+            item.addEventListener('click', () => {
+                const isFolder = item.dataset.isFolder === 'true';
+                const id = item.dataset.id;
 
                 if (isFolder) {
-                    // Right-clicked on a folder - show both item actions AND create actions
-                    itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
-                    createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
-                    separator.classList.remove('context-menu__item--hidden');
-                    createParentId = selectedItemId; // Create items inside this folder
+                    navigateToFolder(id);
                 } else {
-                    // Right-clicked on a file - show only item actions
-                    itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
-                    createActions.forEach(el => el.classList.add('context-menu__item--hidden'));
-                    separator.classList.add('context-menu__item--hidden');
-                    createParentId = CURRENT_NODE_ID;
+                    openArticle(id);
                 }
-            } else {
-                // Right-clicked on empty space - show create actions, hide item actions
-                selectedItemId = null;
-                createParentId = CURRENT_NODE_ID; // Create in current folder
-
-                itemActions.forEach(el => el.classList.add('context-menu__item--hidden'));
-                createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
-                separator.classList.add('context-menu__item--hidden');
-            }
-
-            contextMenu.style.display = 'block';
-            contextMenu.style.left = `${e.pageX}px`;
-            contextMenu.style.top = `${e.pageY}px`;
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!contextMenu.contains(e.target)) {
-                contextMenu.style.display = 'none';
-                // Clear selection when closing context menu
-                document.querySelectorAll('.file-item, .hierarchy-item').forEach(el => {
-                    el.classList.remove('file-item--selected', 'hierarchy-item--selected');
-                });
-            }
-        });
-
-        // Context menu actions
-        async function createNewItem(isFolder, isAttached = false) {
-            const type = isAttached ? 'attached folder' : (isFolder ? 'folder' : 'article');
-            const name = prompt(`Enter name for new ${type}:`);
-            if (name) {
-                const parentId = createParentId || CURRENT_NODE_ID;
-                const response = await fetch('{{ url_for("create_node") }}', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({
-                        name,
-                        parent_id: parentId,
-                        is_folder: isFolder,
-                        is_attached: isAttached
-                    })
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    if (!isFolder) {
-                        // Open new articles in edit mode
-                        window.location.href = `{{ url_for('view_node', node_id='') }}${result.id}?edit=true`;
-                    } else {
-                        // If creating in current folder, add to view without reload
-                        if (parentId === CURRENT_NODE_ID || currentView === 'hierarchy') {
-                            // Reload or add to DOM depending on view
-                            window.location.reload();
-                        } else {
-                            // Created in a subfolder, just clear cache
-                            cachedFolderTree = null;
-                        }
-                    }
-                }
-            }
-        }
-
-        document.getElementById('context-new-folder').addEventListener('click', () => createNewItem(true, false));
-        document.getElementById('context-new-attached').addEventListener('click', () => createNewItem(true, true));
-        document.getElementById('context-new-article').addEventListener('click', () => createNewItem(false, false));
-
-        document.getElementById('context-rename').addEventListener('click', async () => {
-            if (!selectedItemId) return;
-            const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
-            const currentName = itemElement ? itemElement.dataset.name : '';
-            const newName = prompt("Enter new name:", currentName);
-            if (newName && newName !== currentName) {
-                const response = await fetch(`{{ url_for('update_node', node_id='') }}${selectedItemId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ name: newName })
-                });
-
-                if (response.ok) {
-                    // Update the name in DOM without reloading
-                    const nameElement = itemElement.querySelector('.file-item__name, .hierarchy-item__name');
-                    if (nameElement) {
-                        nameElement.textContent = newName;
-                    }
-                    itemElement.dataset.name = newName;
-
-                    // Invalidate cache
-                    cachedFolderTree = null;
-                }
-            }
-        });
-
-        document.getElementById('context-delete').addEventListener('click', async () => {
-            if (!selectedItemId) return;
-            if (confirm("Are you sure you want to delete this item and all its contents?")) {
-                const response = await fetch(`{{ url_for('delete_node', node_id='') }}${selectedItemId}`, {
-                    method: 'DELETE',
-                    credentials: 'same-origin'
-                });
-
-                if (response.ok) {
-                    // Remove from DOM without reloading
-                    const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
-                    if (itemElement) {
-                        // In hierarchy view, also remove the children container
-                        if (itemElement.classList.contains('hierarchy-item')) {
-                            const childrenDiv = itemElement.nextElementSibling;
-                            if (childrenDiv && childrenDiv.classList.contains('hierarchy-children')) {
-                                childrenDiv.remove();
-                            }
-                        }
-                        itemElement.remove();
-                    }
-
-                    // Remove from expanded folders set if it was a folder
-                    expandedFolders.delete(selectedItemId);
-                    saveExpandedState();
-
-                    // Invalidate cache
-                    cachedFolderTree = null;
-
-                    // Clear selection
-                    selectedItemId = null;
-                }
-            }
-        });
-
-        document.getElementById('context-open').addEventListener('click', () => {
-            if (selectedItemId) {
-                const itemElement = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
-                if(itemElement) itemElement.click();
-            }
-        });
-
-        // Move functionality
-        let selectedDestinationId = null;
-        let cachedFolderTree = null; // Cache the folder tree
-
-        // Track expanded folders in hierarchy view with sessionStorage persistence
-        let expandedFolders = new Set();
-
-        // Load expanded folders from sessionStorage
-        function loadExpandedState() {
-            try {
-                const saved = sessionStorage.getItem('knowledgetree_expanded_folders');
-                if (saved) {
-                    expandedFolders = new Set(JSON.parse(saved));
-                }
-            } catch (error) {
-                console.error('Failed to load expanded state:', error);
-            }
-        }
-
-        // Save expanded folders to sessionStorage
-        function saveExpandedState() {
-            try {
-                sessionStorage.setItem('knowledgetree_expanded_folders', JSON.stringify([...expandedFolders]));
-            } catch (error) {
-                console.error('Failed to save expanded state:', error);
-            }
-        }
-
-        // Initialize expanded state from sessionStorage
-        loadExpandedState();
-
-        function createFolderTreeNode(folder, level = 0) {
-            const li = document.createElement('li');
-            li.className = 'folder-tree__item';
-
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = 'folder-tree__node';
-            nodeDiv.dataset.folderId = folder.id;
-
-            // Toggle button (for expand/collapse)
-            const toggle = document.createElement('span');
-            toggle.className = 'folder-tree__toggle';
-            if (folder.children && folder.children.length > 0) {
-                toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
-            } else {
-                toggle.innerHTML = '';
-            }
-
-            // Folder icon
-            const icon = document.createElement('span');
-            icon.className = 'folder-tree__icon';
-            icon.textContent = folder.is_attached ? '📎' : '📁';
-
-            // Folder name
-            const name = document.createElement('span');
-            name.className = 'folder-tree__name';
-            name.textContent = folder.name;
-
-            nodeDiv.appendChild(toggle);
-            nodeDiv.appendChild(icon);
-            nodeDiv.appendChild(name);
-
-            // Click handler for selection
-            nodeDiv.addEventListener('click', (e) => {
-                e.stopPropagation();
-
-                // Handle toggle click
-                if (e.target.closest('.folder-tree__toggle') === toggle && folder.children && folder.children.length > 0) {
-                    const childrenUl = li.querySelector('.folder-tree__children');
-                    if (childrenUl) {
-                        const isCollapsed = childrenUl.classList.contains('folder-tree__children--collapsed');
-                        childrenUl.classList.toggle('folder-tree__children--collapsed');
-                        toggle.innerHTML = isCollapsed ? '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>' : '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
-                        lucide.createIcons(); // Re-initialize the new icon
-                    }
-                    return;
-                }
-
-                // Handle folder selection
-                document.querySelectorAll('.folder-tree__node').forEach(n => {
-                    n.classList.remove('folder-tree__node--selected');
-                });
-                nodeDiv.classList.add('folder-tree__node--selected');
-                selectedDestinationId = folder.id;
             });
+        });
+    }
 
-            li.appendChild(nodeDiv);
-
-            // Add children
-            if (folder.children && folder.children.length > 0) {
-                const childrenUl = document.createElement('ul');
-                childrenUl.className = 'folder-tree__children folder-tree__children--collapsed';
-
-                folder.children.forEach(child => {
-                    childrenUl.appendChild(createFolderTreeNode(child, level + 1));
-                });
-
-                li.appendChild(childrenUl);
-            }
-
-            return li;
+    // Article functions
+    async function openArticle(nodeId, addToHistory = true) {
+        // Check for unsaved changes if switching articles while editing
+        if (currentArticleId && currentArticleId !== nodeId && isEditingArticle) {
+            await promptUnsavedChanges();
+            closeArticle();
         }
 
-        document.getElementById('context-move').addEventListener('click', async () => {
-            if (!selectedItemId) return;
+        try {
+            const response = await fetch(`${basePath}/api/node/${nodeId}`, { credentials: 'same-origin' });
+            if (!response.ok) throw new Error('Failed to load article');
 
-            const moveModal = document.getElementById('move-modal');
-            const folderList = document.getElementById('folder-list');
+            const data = await response.json();
+            currentArticleId = nodeId;
+            currentArticleData = data;
 
-            selectedDestinationId = null;
-            moveModal.classList.add('active');
+            // Update UI to show article view
+            fileBrowser.style.display = 'none';
+            articleView.style.display = 'flex';
 
-            // If we have cached tree, show it immediately
-            if (cachedFolderTree) {
-                folderList.innerHTML = '';
-                const ul = document.createElement('ul');
-                ul.className = 'folder-tree';
-                ul.appendChild(createFolderTreeNode(cachedFolderTree));
-                folderList.appendChild(ul);
-                lucide.createIcons();
-                return;
+            // Update toolbar
+            document.getElementById('item-count').style.display = 'none';
+            document.getElementById('view-switcher').style.display = 'none';
+            document.getElementById('article-title').style.display = 'inline';
+            document.getElementById('article-title').textContent = data.read_only ? `${data.name} (read-only)` : data.name;
+            document.getElementById('article-actions').style.display = 'flex';
+
+            // Show/hide edit button based on read_only status
+            document.getElementById('btn-edit-article').style.display = data.read_only ? 'none' : '';
+
+            // Update article content
+            document.getElementById('article-display').innerHTML = data.content_html || '<p class="u-text-secondary">No content yet. Click Edit to add content.</p>';
+
+            // Update attachments
+            updateArticleFiles(data.files || []);
+
+            // Update breadcrumb to include article
+            updatePathBarForArticle(data.name, nodeId);
+
+            // Update URL and history
+            const newUrl = `${basePath}/view/${nodeId}`;
+            if (addToHistory) {
+                navigationHistory = navigationHistory.slice(0, historyIndex + 1);
+                navigationHistory.push({ nodeId: nodeId, isArticle: true });
+                historyIndex = navigationHistory.length - 1;
+                updateNavButtons();
             }
+            window.history.pushState({ nodeId: nodeId, isArticle: true }, data.name, newUrl);
 
-            // Show loading state for first load
-            folderList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-text-secondary);">Loading folders...</div>';
+            lucide.createIcons();
+        } catch (error) {
+            console.error('Error loading article:', error);
+            alert('Failed to load article');
+        }
+    }
 
-            // Fetch folder tree in background
-            try {
-                const response = await fetch('{{ url_for("get_folder_tree") }}', {
-                    credentials: 'same-origin'
-                });
-                const folderTree = await response.json();
-                cachedFolderTree = folderTree; // Cache for next time
+    function closeArticle() {
+        currentArticleId = null;
+        currentArticleData = null;
+        isEditingArticle = false;
 
-                // Build folder tree UI
-                folderList.innerHTML = '';
-                const ul = document.createElement('ul');
-                ul.className = 'folder-tree';
-                ul.appendChild(createFolderTreeNode(folderTree));
-                folderList.appendChild(ul);
+        // Destroy editor if exists
+        if (articleEditor) {
+            articleEditor.destroy();
+            articleEditor = null;
+        }
 
-                // Initialize Lucide icons in the folder tree
-                lucide.createIcons();
-            } catch (error) {
-                folderList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-danger);">Error loading folders. Please try again.</div>';
-                console.error('Failed to load folder tree:', error);
-            }
+        // Reset UI
+        articleView.style.display = 'none';
+        fileBrowser.style.display = '';
+        document.getElementById('article-display').style.display = '';
+        document.getElementById('article-editor').style.display = 'none';
+        document.getElementById('article-markdown-editor').style.display = 'none';
+        document.getElementById('editor-mode-toggle').style.display = 'none';
+
+        // Reset toolbar
+        document.getElementById('item-count').style.display = '';
+        document.getElementById('view-switcher').style.display = '';
+        document.getElementById('article-title').style.display = 'none';
+        document.getElementById('article-actions').style.display = 'none';
+
+        // Reset edit buttons
+        document.getElementById('btn-edit-article').style.display = '';
+        document.getElementById('btn-cancel-edit').style.display = 'none';
+        document.getElementById('btn-save-article').style.display = 'none';
+
+        // Restore pathbar
+        updatePathBar(CURRENT_BREADCRUMB);
+    }
+
+    function updatePathBarForArticle(articleName, articleId) {
+        const pathbar = document.getElementById('pathbar-breadcrumb');
+        let html = `<a href="#" class="kt-pathbar__segment" data-node-id="root">
+            <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+        </a>`;
+
+        CURRENT_BREADCRUMB.slice(1).forEach((item) => {
+            html += `<span class="kt-pathbar__separator">/</span>`;
+            html += `<a href="#" class="kt-pathbar__segment" data-node-id="${item.id}">${item.name}</a>`;
         });
 
-        document.getElementById('confirm-move-btn').addEventListener('click', async () => {
-            if (!selectedDestinationId || !selectedItemId) {
-                alert('Please select a destination folder');
+        // Add article to breadcrumb
+        html += `<span class="kt-pathbar__separator">/</span>`;
+        html += `<span class="kt-pathbar__segment kt-pathbar__segment--current">${articleName}</span>`;
+
+        pathbar.innerHTML = html;
+        lucide.createIcons();
+
+        // Attach handlers for folder segments
+        pathbar.querySelectorAll('.kt-pathbar__segment[data-node-id]').forEach(seg => {
+            seg.addEventListener('click', (e) => {
+                e.preventDefault();
+                const nodeId = seg.dataset.nodeId;
+                if (nodeId) {
+                    closeArticle();
+                    if (nodeId !== CURRENT_NODE_ID) navigateToFolder(nodeId);
+                }
+            });
+        });
+    }
+
+    function updateArticleFiles(files) {
+        const fileList = document.getElementById('article-files');
+        if (files.length === 0) {
+            fileList.innerHTML = '<p class="u-text-secondary u-mb-0">No files attached.</p>';
+            return;
+        }
+
+        let html = '<ul class="u-mb-0">';
+        files.forEach(file => {
+            html += `<li><a href="${basePath}/uploads/${file.filename}" target="_blank" class="u-text-primary">${file.filename}</a></li>`;
+        });
+        html += '</ul>';
+        fileList.innerHTML = html;
+    }
+
+    async function startEditingArticle() {
+        if (!currentArticleData || currentArticleData.read_only) return;
+
+        isEditingArticle = true;
+        document.getElementById('article-display').style.display = 'none';
+
+        // Update buttons
+        document.getElementById('btn-edit-article').style.display = 'none';
+        document.getElementById('btn-cancel-edit').style.display = '';
+        document.getElementById('btn-save-article').style.display = '';
+        document.getElementById('editor-mode-toggle').style.display = 'flex';
+
+        // Determine initial editor mode based on content format (default to wysiwyg)
+        const contentFormat = currentArticleData.content_format || 'html';
+        editorMode = contentFormat === 'markdown' ? 'markdown' : 'wysiwyg';
+        updateEditorModeButtons();
+
+        if (editorMode === 'wysiwyg') {
+            await initWysiwygEditor();
+        } else {
+            initMarkdownEditor();
+        }
+    }
+
+    async function initWysiwygEditor() {
+        document.getElementById('article-editor').style.display = '';
+        document.getElementById('article-markdown-editor').style.display = 'none';
+
+        // Wait for CKEditor to load if not ready
+        if (!window.CKEditorLoaded) {
+            await new Promise(resolve => { window.onCKEditorReady = resolve; });
+        }
+
+        // Destroy existing editor if any
+        if (articleEditor) {
+            await articleEditor.destroy();
+            articleEditor = null;
+        }
+
+        // Initialize CKEditor
+        const editorEl = document.getElementById('article-editor');
+        editorEl.innerHTML = ''; // Clear any previous content
+
+        const plugins = window.CKEditorPlugins;
+        articleEditor = await window.CKEditorClassicEditor.create(editorEl, {
+            plugins: [
+                plugins.Essentials, plugins.Bold, plugins.Italic, plugins.Strikethrough,
+                plugins.Underline, plugins.Font, plugins.Paragraph, plugins.Heading,
+                plugins.Link, plugins.List, plugins.TodoList, plugins.BlockQuote,
+                plugins.Code, plugins.CodeBlock, plugins.Table, plugins.TableToolbar,
+                plugins.TableProperties, plugins.TableCellProperties,
+                plugins.MediaEmbed, plugins.HorizontalLine, plugins.Indent,
+                plugins.IndentBlock, plugins.Alignment, plugins.AutoLink
+            ],
+            toolbar: {
+                items: [
+                    'heading', '|',
+                    'bold', 'italic', 'underline', 'strikethrough', '|',
+                    'link', 'blockQuote', 'code', 'codeBlock', '|',
+                    'bulletedList', 'numberedList', 'todoList', '|',
+                    'outdent', 'indent', 'alignment', '|',
+                    'insertTable', 'horizontalLine', '|',
+                    'undo', 'redo'
+                ]
+            },
+            table: {
+                contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties']
+            },
+            heading: {
+                options: [
+                    { model: 'paragraph', title: 'Paragraph', class: 'ck-heading_paragraph' },
+                    { model: 'heading1', view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
+                    { model: 'heading2', view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
+                    { model: 'heading3', view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' }
+                ]
+            },
+            initialData: currentArticleData.content_html || ''
+        });
+    }
+
+    function initMarkdownEditor() {
+        document.getElementById('article-editor').style.display = 'none';
+        document.getElementById('article-markdown-editor').style.display = '';
+
+        // Destroy CKEditor if it exists
+        if (articleEditor) {
+            articleEditor.destroy();
+            articleEditor = null;
+        }
+
+        // Set markdown content
+        const markdownEditor = document.getElementById('article-markdown-editor');
+        markdownEditor.value = currentArticleData.content_markdown || currentArticleData.content || '';
+    }
+
+    function updateEditorModeButtons() {
+        const wysiwygBtn = document.getElementById('btn-mode-wysiwyg');
+        const markdownBtn = document.getElementById('btn-mode-markdown');
+
+        wysiwygBtn.classList.toggle('editor-mode-toggle__btn--active', editorMode === 'wysiwyg');
+        markdownBtn.classList.toggle('editor-mode-toggle__btn--active', editorMode === 'markdown');
+    }
+
+    async function switchEditorMode(newMode) {
+        if (newMode === editorMode) return;
+
+        // Warn about potential loss of formatting when switching
+        if (editorMode === 'wysiwyg' && newMode === 'markdown') {
+            const confirmed = confirm('Switching to Markdown mode may lose some rich text formatting. Continue?');
+            if (!confirmed) return;
+        }
+
+        editorMode = newMode;
+        updateEditorModeButtons();
+
+        if (newMode === 'wysiwyg') {
+            // Get markdown content and convert (will be converted by backend on save)
+            const markdownContent = document.getElementById('article-markdown-editor').value;
+            // For now, just initialize with existing HTML or empty
+            await initWysiwygEditor();
+        } else {
+            // Get HTML content and show markdown editor
+            let markdownContent = '';
+            if (articleEditor) {
+                // Store HTML content for reference
+                markdownContent = currentArticleData.content_markdown || currentArticleData.content || '';
+            }
+            initMarkdownEditor();
+        }
+    }
+
+    async function cancelEditingArticle() {
+        // Check for unsaved changes
+        if (hasUnsavedChanges()) {
+            const choice = confirm('You have unsaved changes. Do you want to save before canceling?\n\nClick OK to save, or Cancel to discard changes.');
+            if (choice) {
+                await saveArticle();
                 return;
             }
+        }
 
-            // Get the item's data before removing it
-            const movedItem = document.querySelector(`.file-item[data-id="${selectedItemId}"], .hierarchy-item[data-id="${selectedItemId}"]`);
-            const itemData = movedItem ? {
-                id: movedItem.dataset.id,
-                name: movedItem.dataset.name,
-                is_folder: movedItem.dataset.isFolder === 'true',
-                is_attached: movedItem.querySelector('.file-item__icon, .hierarchy-item__icon')?.textContent === '📎'
-            } : null;
+        isEditingArticle = false;
+        document.getElementById('article-display').style.display = '';
+        document.getElementById('article-editor').style.display = 'none';
+        document.getElementById('article-markdown-editor').style.display = 'none';
 
-            const basePath = window.location.pathname.startsWith('/knowledgetree/') ? '/knowledgetree' : '';
-            const response = await fetch(`${basePath}/api/node/${selectedItemId}/move`, {
-                method: 'POST',
+        // Update buttons
+        document.getElementById('btn-edit-article').style.display = '';
+        document.getElementById('btn-cancel-edit').style.display = 'none';
+        document.getElementById('btn-save-article').style.display = 'none';
+        document.getElementById('editor-mode-toggle').style.display = 'none';
+
+        // Destroy editor
+        if (articleEditor) {
+            await articleEditor.destroy();
+            articleEditor = null;
+        }
+    }
+
+    async function saveArticle() {
+        if (!currentArticleId) return;
+
+        let payload = {};
+
+        if (editorMode === 'wysiwyg') {
+            if (!articleEditor) return;
+            // Get HTML content from CKEditor
+            const contentHtml = articleEditor.getData();
+            payload = { content_html: contentHtml };
+        } else {
+            // Get markdown content
+            const markdownContent = document.getElementById('article-markdown-editor').value;
+            payload = { content: markdownContent };
+        }
+
+        try {
+            const response = await fetch(`${basePath}/api/node/${currentArticleId}`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ new_parent_id: selectedDestinationId })
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Failed to save');
+
+            // Reload article to get updated data
+            const updatedResponse = await fetch(`${basePath}/api/node/${currentArticleId}`, { credentials: 'same-origin' });
+            const updatedData = await updatedResponse.json();
+
+            currentArticleData = updatedData;
+            document.getElementById('article-display').innerHTML = updatedData.content_html || '<p class="u-text-secondary">No content.</p>';
+
+            // Exit edit mode
+            await cancelEditingArticle();
+        } catch (error) {
+            console.error('Error saving article:', error);
+            alert('Failed to save article');
+        }
+    }
+
+    // Article button handlers
+    document.getElementById('btn-edit-article').addEventListener('click', startEditingArticle);
+    document.getElementById('btn-cancel-edit').addEventListener('click', cancelEditingArticle);
+    document.getElementById('btn-save-article').addEventListener('click', saveArticle);
+
+    // Editor mode toggle handlers
+    document.getElementById('btn-mode-wysiwyg').addEventListener('click', () => switchEditorMode('wysiwyg'));
+    document.getElementById('btn-mode-markdown').addEventListener('click', () => switchEditorMode('markdown'));
+
+    // File upload handler
+    document.getElementById('upload-btn').addEventListener('click', async () => {
+        if (!currentArticleId) return;
+
+        const fileInput = document.getElementById('file-upload-input');
+        if (!fileInput.files.length) {
+            alert('Please select a file to upload.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        try {
+            const response = await fetch(`${basePath}/api/node/${currentArticleId}/upload`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: formData
             });
 
             if (response.ok) {
-                // Close modal
-                document.getElementById('move-modal').classList.remove('active');
+                fileInput.value = '';
+                // Reload article to get updated files
+                const updatedResponse = await fetch(`${basePath}/api/node/${currentArticleId}`, { credentials: 'same-origin' });
+                const updatedData = await updatedResponse.json();
+                currentArticleData = updatedData;
+                updateArticleFiles(updatedData.files || []);
+            } else {
+                alert('File upload failed.');
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('File upload failed.');
+        }
+    });
 
-                // Invalidate cached folder tree
+    // Export context handler
+    document.getElementById('btn-export-context').addEventListener('click', async () => {
+        if (!currentArticleId) return;
+
+        const contextModal = document.getElementById('context-modal');
+        const treeContainer = document.getElementById('context-tree-container');
+        const contextTextarea = document.getElementById('context-textarea');
+        const generateBtn = document.getElementById('generate-context-btn');
+        const modalMessage = document.getElementById('modal-message');
+
+        modalMessage.textContent = 'Select the items to include in the exported context.';
+        treeContainer.innerHTML = '<p class="u-text-secondary">Loading...</p>';
+        treeContainer.style.display = '';
+        contextTextarea.style.display = 'none';
+        generateBtn.style.display = '';
+        contextModal.classList.add('active');
+
+        try {
+            const response = await fetch(`${basePath}/api/node/${currentArticleId}/context-tree`, { credentials: 'same-origin' });
+            const data = await response.json();
+
+            treeContainer.innerHTML = '';
+            if (data.attached_folders.length === 0) {
+                treeContainer.innerHTML = '<p class="u-text-secondary">No attached folders in this context.</p>';
+            } else {
+                const ul = document.createElement('ul');
+                ul.className = 'checkbox-list';
+
+                data.attached_folders.forEach(folder => {
+                    const li = document.createElement('li');
+                    li.className = 'checkbox-list__item';
+
+                    const label = document.createElement('label');
+                    label.className = 'checkbox-list__label';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.id = folder.id;
+
+                    label.appendChild(checkbox);
+                    label.innerHTML += ` 📎 ${folder.name}`;
+                    li.appendChild(label);
+                    ul.appendChild(li);
+                });
+
+                treeContainer.appendChild(ul);
+            }
+        } catch (error) {
+            treeContainer.innerHTML = '<p class="u-text-danger">Failed to load context tree.</p>';
+        }
+    });
+
+    document.getElementById('generate-context-btn').addEventListener('click', async () => {
+        if (!currentArticleId) return;
+
+        const treeContainer = document.getElementById('context-tree-container');
+        const contextTextarea = document.getElementById('context-textarea');
+        const modalMessage = document.getElementById('modal-message');
+        const generateBtn = document.getElementById('generate-context-btn');
+
+        const excludedIds = Array.from(treeContainer.querySelectorAll('input[type="checkbox"]:not(:checked)'))
+                                 .map(cb => cb.dataset.id);
+
+        try {
+            const response = await fetch(`${basePath}/api/node/${currentArticleId}/context`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ excluded_ids: excludedIds })
+            });
+            const data = await response.json();
+
+            treeContainer.style.display = 'none';
+            generateBtn.style.display = 'none';
+            contextTextarea.style.display = '';
+            contextTextarea.value = data.context;
+            contextTextarea.focus();
+            contextTextarea.select();
+
+            modalMessage.textContent = 'Auto-copied to clipboard! You can also copy the text below.';
+
+            if (navigator.clipboard) {
+                try {
+                    await navigator.clipboard.writeText(data.context);
+                } catch (err) {
+                    modalMessage.textContent = 'Could not auto-copy. Please copy the text manually.';
+                }
+            }
+        } catch (error) {
+            alert('Failed to generate context.');
+        }
+    });
+
+    document.getElementById('close-context-modal').addEventListener('click', () => {
+        document.getElementById('context-modal').classList.remove('active');
+    });
+
+    // View switcher
+    const viewGridBtn = document.getElementById('view-grid');
+    const viewListBtn = document.getElementById('view-list');
+
+    async function setView(view, save = true) {
+        currentView = view;
+        fileBrowser.classList.remove('kt-files--list');
+
+        viewGridBtn.classList.remove('view-switcher__button--active');
+        viewListBtn.classList.remove('view-switcher__button--active');
+
+        if (view === 'grid') {
+            viewGridBtn.classList.add('view-switcher__button--active');
+        } else {
+            fileBrowser.classList.add('kt-files--list');
+            viewListBtn.classList.add('view-switcher__button--active');
+        }
+
+        if (save) saveViewPreference(view);
+    }
+
+    async function loadViewPreference() {
+        try {
+            const response = await fetch('/codex/api/my/settings', { credentials: 'same-origin' });
+            if (response.ok) {
+                const data = await response.json();
+                const savedView = data.knowledgetree_view_preference || 'grid';
+                // Map old 'tree' to 'list'
+                await setView(savedView === 'tree' || savedView === 'hierarchy' ? 'list' : savedView, false);
+            }
+        } catch (e) {}
+    }
+
+    async function saveViewPreference(view) {
+        try {
+            await fetch('/codex/api/my/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ knowledgetree_view_preference: view })
+            });
+        } catch (e) {}
+    }
+
+    viewGridBtn.addEventListener('click', () => setView('grid'));
+    viewListBtn.addEventListener('click', () => setView('list'));
+
+    // Context menu
+    document.getElementById('file-browser-container').addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        const targetItem = e.target.closest('.kt-file') || e.target.closest('.kt-tree-item');
+
+        const itemActions = document.querySelectorAll('.context-menu__item--item-action');
+        const createActions = document.querySelectorAll('.context-menu__item--create-action');
+        const separator = document.getElementById('context-separator');
+
+        if (targetItem) {
+            document.querySelectorAll('.kt-file--selected, .kt-tree-item--selected').forEach(el => {
+                el.classList.remove('kt-file--selected', 'kt-tree-item--selected');
+            });
+            targetItem.classList.add(targetItem.classList.contains('kt-tree-item') ? 'kt-tree-item--selected' : 'kt-file--selected');
+            selectedItemId = targetItem.dataset.id;
+
+            const isFolder = targetItem.dataset.isFolder === 'true' || targetItem.classList.contains('kt-tree-item');
+
+            if (isFolder) {
+                itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                separator.classList.remove('context-menu__item--hidden');
+                createParentId = selectedItemId;
+            } else {
+                itemActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+                createActions.forEach(el => el.classList.add('context-menu__item--hidden'));
+                separator.classList.add('context-menu__item--hidden');
+                createParentId = CURRENT_NODE_ID;
+            }
+        } else {
+            selectedItemId = null;
+            createParentId = CURRENT_NODE_ID;
+            itemActions.forEach(el => el.classList.add('context-menu__item--hidden'));
+            createActions.forEach(el => el.classList.remove('context-menu__item--hidden'));
+            separator.classList.add('context-menu__item--hidden');
+        }
+
+        contextMenu.style.display = 'block';
+        contextMenu.style.left = `${e.pageX}px`;
+        contextMenu.style.top = `${e.pageY}px`;
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.style.display = 'none';
+            document.querySelectorAll('.kt-file--selected, .kt-tree-item--selected').forEach(el => {
+                el.classList.remove('kt-file--selected', 'kt-tree-item--selected');
+            });
+        }
+    });
+
+    // Context menu actions
+    async function createNewItem(isFolder, isAttached = false) {
+        const type = isAttached ? 'attached folder' : (isFolder ? 'folder' : 'article');
+        const name = prompt(`Enter name for new ${type}:`);
+        if (name) {
+            const parentId = createParentId || CURRENT_NODE_ID;
+            const response = await fetch('{{ url_for("create_node") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ name, parent_id: parentId, is_folder: isFolder, is_attached: isAttached })
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (!isFolder) {
+                    // Open the new article and start editing
+                    await openArticle(result.id);
+                    startEditingArticle();
+                } else {
+                    cachedFolderTree = null;
+                    initSidebar();
+                    if (parentId === CURRENT_NODE_ID) navigateToFolder(CURRENT_NODE_ID);
+                }
+            }
+        }
+    }
+
+    document.getElementById('context-new-folder').addEventListener('click', () => createNewItem(true, false));
+    document.getElementById('context-new-attached').addEventListener('click', () => createNewItem(true, true));
+    document.getElementById('context-new-article').addEventListener('click', () => createNewItem(false, false));
+
+    document.getElementById('context-rename').addEventListener('click', async () => {
+        if (!selectedItemId) return;
+        const itemElement = document.querySelector(`.kt-file[data-id="${selectedItemId}"], .kt-tree-item[data-id="${selectedItemId}"]`);
+        const currentName = itemElement ? itemElement.dataset.name : '';
+        const newName = prompt("Enter new name:", currentName);
+        if (newName && newName !== currentName) {
+            const response = await fetch(`{{ url_for('update_node', node_id='') }}${selectedItemId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ name: newName })
+            });
+            if (response.ok) {
+                const nameEl = itemElement.querySelector('.kt-file__name, .kt-tree-item__name');
+                if (nameEl) nameEl.textContent = newName;
+                itemElement.dataset.name = newName;
                 cachedFolderTree = null;
+                initSidebar();
+            }
+        }
+    });
 
-                // Remove the moved item from DOM
-                if (movedItem) {
-                    // In hierarchy view, also remove the children container if it exists
-                    if (movedItem.classList.contains('hierarchy-item')) {
-                        const childrenDiv = movedItem.nextElementSibling;
-                        if (childrenDiv && childrenDiv.classList.contains('hierarchy-children')) {
-                            childrenDiv.remove();
-                        }
-                    }
-                    movedItem.remove();
-                }
-
-                // Try to add the item to destination if it's visible and expanded
-                if (itemData && currentView === 'hierarchy') {
-                    const destChildrenDiv = document.querySelector(`.hierarchy-children[data-parent-id="${selectedDestinationId}"]`);
-                    if (destChildrenDiv && destChildrenDiv.classList.contains('hierarchy-children--expanded')) {
-                        // Add the item to the expanded destination folder
-                        await createHierarchyItem(itemData, destChildrenDiv, 0);
-                        lucide.createIcons();
-                    }
-                }
-
-                // In grid/tree view, check if destination is the current folder
-                if (itemData && (currentView === 'grid' || currentView === 'tree') && selectedDestinationId === CURRENT_NODE_ID) {
-                    // Item was moved INTO the current folder, add it to the view
-                    const newItem = document.createElement('div');
-                    newItem.className = 'file-item';
-                    if (itemData.is_folder && itemData.is_attached) {
-                        newItem.innerHTML = `
-                            <span class="file-item__icon">📎</span>
-                            <span class="file-item__name">${itemData.name}</span>
-                        `;
-                    } else if (itemData.is_folder) {
-                        newItem.innerHTML = `
-                            <span class="file-item__icon">📁</span>
-                            <span class="file-item__name">${itemData.name}</span>
-                        `;
-                    } else {
-                        newItem.innerHTML = `
-                            <span class="file-item__icon">📄</span>
-                            <span class="file-item__name">${itemData.name}</span>
-                        `;
-                    }
-                    newItem.dataset.id = itemData.id;
-                    newItem.dataset.name = itemData.name;
-                    newItem.dataset.isFolder = itemData.is_folder;
-
-                    // Add click handler
-                    newItem.addEventListener('click', () => {
-                        if (itemData.is_folder) {
-                            const newPath = CURRENT_PATH ? `${CURRENT_PATH}/${encodeURIComponent(itemData.name)}` : encodeURIComponent(itemData.name);
-                            window.location.href = `{{ url_for('browse', path='') }}${newPath}`;
-                        } else {
-                            window.location.href = `{{ url_for('view_node', node_id='') }}${itemData.id}`;
-                        }
-                    });
-
-                    fileBrowserElement.appendChild(newItem);
-                }
-
-                // Clear selection
+    document.getElementById('context-delete').addEventListener('click', async () => {
+        if (!selectedItemId) return;
+        if (confirm("Are you sure you want to delete this item and all its contents?")) {
+            const response = await fetch(`{{ url_for('delete_node', node_id='') }}${selectedItemId}`, {
+                method: 'DELETE',
+                credentials: 'same-origin'
+            });
+            if (response.ok) {
+                const itemElement = document.querySelector(`.kt-file[data-id="${selectedItemId}"], .kt-tree-item[data-id="${selectedItemId}"]`);
+                if (itemElement) itemElement.remove();
+                cachedFolderTree = null;
+                initSidebar();
                 selectedItemId = null;
-            } else {
-                const error = await response.json();
-                alert(`Error: ${error.error || 'Failed to move item'}`);
             }
-        });
+        }
+    });
 
-        document.getElementById('close-move-modal').addEventListener('click', () => {
-            document.getElementById('move-modal').classList.remove('active');
-        });
+    document.getElementById('context-open').addEventListener('click', () => {
+        if (selectedItemId) {
+            const itemElement = document.querySelector(`.kt-file[data-id="${selectedItemId}"], .kt-tree-item[data-id="${selectedItemId}"]`);
+            if (itemElement) itemElement.click();
+        }
+    });
 
-        document.getElementById('cancel-move-btn').addEventListener('click', () => {
-            document.getElementById('move-modal').classList.remove('active');
-        });
+    // Move modal
+    let selectedDestinationId = null;
 
-        // Close modal on background click
-        window.addEventListener('click', (event) => {
-            const moveModal = document.getElementById('move-modal');
-            if (event.target == moveModal) {
-                moveModal.classList.remove('active');
+    function createMoveTreeNode(folder, level = 0) {
+        const li = document.createElement('li');
+        li.className = 'folder-tree__item';
+
+        const nodeDiv = document.createElement('div');
+        nodeDiv.className = 'folder-tree__node';
+        nodeDiv.dataset.folderId = folder.id;
+
+        const hasChildren = folder.children && folder.children.length > 0;
+
+        nodeDiv.innerHTML = `
+            <span class="folder-tree__toggle">
+                ${hasChildren ? '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>' : ''}
+            </span>
+            <span class="folder-tree__icon">${folder.is_attached ? '📎' : '📁'}</span>
+            <span class="folder-tree__name">${folder.name}</span>
+        `;
+
+        nodeDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const toggle = nodeDiv.querySelector('.folder-tree__toggle');
+
+            if (e.target.closest('.folder-tree__toggle') && hasChildren) {
+                const childrenUl = li.querySelector('.folder-tree__children');
+                if (childrenUl) {
+                    const isCollapsed = childrenUl.classList.contains('folder-tree__children--collapsed');
+                    childrenUl.classList.toggle('folder-tree__children--collapsed');
+                    toggle.innerHTML = isCollapsed ?
+                        '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>' :
+                        '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+                    lucide.createIcons();
+                }
+                return;
             }
+
+            document.querySelectorAll('.folder-tree__node').forEach(n => n.classList.remove('folder-tree__node--selected'));
+            nodeDiv.classList.add('folder-tree__node--selected');
+            selectedDestinationId = folder.id;
         });
 
-        // Search functionality
-        const searchInput = document.getElementById('search-input');
-        const searchScope = document.getElementById('search-scope');
-        const searchResults = document.getElementById('search-results');
-        let searchDebounceTimer;
+        li.appendChild(nodeDiv);
 
-        async function performSearch() {
-            clearTimeout(searchDebounceTimer);
-            searchDebounceTimer = setTimeout(async () => {
-                const query = searchInput.value.trim();
-                if (query.length < 2) {
-                    searchResults.classList.remove('dropdown--visible');
-                    return;
-                }
-
-                // Determine start node based on scope selection
-                const scope = searchScope.value;
-                const startNodeId = scope === 'all' ? 'root' : CURRENT_NODE_ID;
-
-                const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=${startNodeId}`, {
-                    credentials: 'same-origin'
-                });
-                const items = await response.json();
-
-                searchResults.innerHTML = '';
-                if (items.length === 0) {
-                    searchResults.innerHTML = '<div class="dropdown__empty">No results found.</div>';
-                } else {
-                    items.forEach(item => {
-                        const div = document.createElement('div');
-                        div.className = 'dropdown__item';
-                        div.innerHTML = `<div class="dropdown__item-title">${item.name}</div><div class="dropdown__item-subtitle">${item.folder_path}</div>`;
-                        div.addEventListener('click', () => {
-                            if (item.is_folder) {
-                                window.location.href = `{{ url_for('browse', path='') }}${item.url_path}`;
-                            } else {
-                                window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
-                            }
-                        });
-                        searchResults.appendChild(div);
-                    });
-                }
-
-                const rect = searchInput.getBoundingClientRect();
-                searchResults.style.top = `${rect.bottom + window.scrollY}px`;
-                searchResults.style.left = `${rect.left + window.scrollX}px`;
-                searchResults.style.width = `${rect.width}px`;
-                searchResults.classList.add('dropdown--visible');
-            }, 300);
+        if (hasChildren) {
+            const childrenUl = document.createElement('ul');
+            childrenUl.className = 'folder-tree__children folder-tree__children--collapsed';
+            folder.children.forEach(child => childrenUl.appendChild(createMoveTreeNode(child, level + 1)));
+            li.appendChild(childrenUl);
         }
 
-        searchInput.addEventListener('input', performSearch);
-        searchScope.addEventListener('change', performSearch);
+        return li;
+    }
 
-        document.addEventListener('click', (e) => {
-            if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchScope) {
+    document.getElementById('context-move').addEventListener('click', async () => {
+        if (!selectedItemId) return;
+
+        const moveModal = document.getElementById('move-modal');
+        const folderList = document.getElementById('folder-list');
+
+        selectedDestinationId = null;
+        moveModal.classList.add('active');
+
+        if (cachedFolderTree) {
+            folderList.innerHTML = '';
+            const ul = document.createElement('ul');
+            ul.className = 'folder-tree';
+            ul.appendChild(createMoveTreeNode(cachedFolderTree));
+            folderList.appendChild(ul);
+            lucide.createIcons();
+            return;
+        }
+
+        folderList.innerHTML = '<div style="text-align: center; padding: 2rem;">Loading...</div>';
+
+        try {
+            const response = await fetch('{{ url_for("get_folder_tree") }}', { credentials: 'same-origin' });
+            const tree = await response.json();
+            cachedFolderTree = tree;
+
+            folderList.innerHTML = '';
+            const ul = document.createElement('ul');
+            ul.className = 'folder-tree';
+            ul.appendChild(createMoveTreeNode(tree));
+            folderList.appendChild(ul);
+            lucide.createIcons();
+        } catch (error) {
+            folderList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--color-danger);">Error loading folders.</div>';
+        }
+    });
+
+    document.getElementById('confirm-move-btn').addEventListener('click', async () => {
+        if (!selectedDestinationId || !selectedItemId) {
+            alert('Please select a destination folder');
+            return;
+        }
+
+        const response = await fetch(`${basePath}/api/node/${selectedItemId}/move`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ new_parent_id: selectedDestinationId })
+        });
+
+        if (response.ok) {
+            document.getElementById('move-modal').classList.remove('active');
+            cachedFolderTree = null;
+            initSidebar();
+            navigateToFolder(CURRENT_NODE_ID);
+            selectedItemId = null;
+        } else {
+            const error = await response.json();
+            alert(`Error: ${error.error || 'Failed to move item'}`);
+        }
+    });
+
+    document.getElementById('close-move-modal').addEventListener('click', () => {
+        document.getElementById('move-modal').classList.remove('active');
+    });
+
+    document.getElementById('cancel-move-btn').addEventListener('click', () => {
+        document.getElementById('move-modal').classList.remove('active');
+    });
+
+    // Search
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    let searchDebounceTimer;
+
+    async function performSearch() {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(async () => {
+            const query = searchInput.value.trim();
+            if (query.length < 2) {
                 searchResults.classList.remove('dropdown--visible');
+                return;
             }
-        });
 
-        // View switcher functionality
-        const fileBrowserElement = document.getElementById('file-browser');
-        const viewGridBtn = document.getElementById('view-grid');
-        const viewTreeBtn = document.getElementById('view-tree');
-        const viewHierarchyBtn = document.getElementById('view-hierarchy');
-        let currentView = 'grid'; // Default
-        let originalHTML = fileBrowserElement.innerHTML; // Save original HTML for switching back
-        const basePath = window.location.pathname.startsWith('/knowledgetree/') ? '/knowledgetree' : '';
+            const response = await fetch(`{{ url_for('search_nodes') }}?query=${encodeURIComponent(query)}&start_node_id=root`, {
+                credentials: 'same-origin'
+            });
+            const items = await response.json();
 
-        // Load user's view preference from Codex
-        async function loadViewPreference() {
-            try {
-                const response = await fetch('/codex/api/my/settings', {
-                    credentials: 'same-origin'
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    const savedView = data.knowledgetree_view_preference || 'grid';
-                    await setView(savedView, false); // Don't save on initial load
-                }
-            } catch (error) {
-                console.error('Failed to load view preference:', error);
-                // Show content even if preference load fails
-                fileBrowserElement.style.opacity = '1';
-            }
-        }
-
-        // Save view preference to Codex
-        async function saveViewPreference(view) {
-            try {
-                await fetch('/codex/api/my/settings', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ knowledgetree_view_preference: view })
-                });
-            } catch (error) {
-                console.error('Failed to save view preference:', error);
-            }
-        }
-
-        // Build hierarchy view
-        async function buildHierarchyView() {
-            // Get all items from the current view BEFORE clearing
-            const fileItems = document.querySelectorAll('.file-item');
-
-            // Now clear the content
-            fileBrowserElement.innerHTML = '';
-
-            // Convert existing file items to hierarchy items
-            for (const fileItem of fileItems) {
-                const item = {
-                    id: fileItem.dataset.id,
-                    name: fileItem.dataset.name,
-                    is_folder: fileItem.dataset.isFolder === 'true',
-                    is_attached: fileItem.querySelector('.file-item__icon').textContent === '📎',
-                    read_only: fileItem.classList.contains('file-item--read-only')
-                };
-                await createHierarchyItem(item, fileBrowserElement);
-            }
-        }
-
-        async function createHierarchyItem(item, container, level = 0) {
-            const itemDiv = document.createElement('div');
-            itemDiv.className = 'hierarchy-item';
-            itemDiv.dataset.id = item.id;
-            itemDiv.dataset.name = item.name;
-            itemDiv.dataset.isFolder = item.is_folder;
-
-            // Toggle for folders
-            const toggle = document.createElement('span');
-            toggle.className = 'hierarchy-item__toggle';
-            if (item.is_folder) {
-                toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+            searchResults.innerHTML = '';
+            if (items.length === 0) {
+                searchResults.innerHTML = '<div class="dropdown__empty">No results found.</div>';
             } else {
-                toggle.innerHTML = '';
-            }
-
-            // Icon
-            const icon = document.createElement('span');
-            icon.className = 'hierarchy-item__icon';
-            if (item.is_folder) {
-                icon.textContent = item.is_attached ? '📎' : '📁';
-            } else {
-                icon.textContent = '📄';
-            }
-
-            // Name
-            const name = document.createElement('span');
-            name.className = 'hierarchy-item__name';
-            name.textContent = item.name;
-
-            itemDiv.appendChild(toggle);
-            itemDiv.appendChild(icon);
-            itemDiv.appendChild(name);
-
-            // Children container
-            const childrenDiv = document.createElement('div');
-            childrenDiv.className = 'hierarchy-children';
-            childrenDiv.dataset.parentId = item.id;
-
-            // Click handler for toggle arrow
-            toggle.addEventListener('click', async (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-
-                console.log('Toggle clicked for:', item.name, 'is_folder:', item.is_folder);
-
-                if (!item.is_folder) return;
-
-                // Toggle children
-                const isExpanded = childrenDiv.classList.contains('hierarchy-children--expanded');
-
-                if (isExpanded) {
-                    childrenDiv.classList.remove('hierarchy-children--expanded');
-                    toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
-                    lucide.createIcons();
-                    expandedFolders.delete(item.id); // Track collapsed state
-                    saveExpandedState();
-                } else {
-                    // Load children if not loaded yet
-                    if (childrenDiv.children.length === 0) {
-                        console.log('Loading children for:', item.id);
-                        const url = `${basePath}/api/node/${item.id}/children`;
-                        console.log('Fetching from:', url);
-                        const response = await fetch(url, {
-                            credentials: 'same-origin'
-                        });
-                        console.log('Response status:', response.status);
-                        if (response.ok) {
-                            const children = await response.json();
-                            console.log('Got children:', children);
-                            for (const child of children) {
-                                await createHierarchyItem(child, childrenDiv, level + 1);
-                            }
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown__item';
+                    div.innerHTML = `<div class="dropdown__item-title">${item.name}</div><div class="dropdown__item-subtitle">${item.folder_path}</div>`;
+                    div.addEventListener('click', () => {
+                        searchResults.classList.remove('dropdown--visible');
+                        searchInput.value = '';
+                        if (item.is_folder) {
+                            navigateToFolder(item.id);
                         } else {
-                            console.error('Failed to load children:', response.status);
+                            openArticle(item.id);
                         }
-                    }
-                    childrenDiv.classList.add('hierarchy-children--expanded');
-                    toggle.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
-                    lucide.createIcons();
-                    expandedFolders.add(item.id); // Track expanded state
-                    saveExpandedState();
-                }
-            });
+                    });
+                    searchResults.appendChild(div);
+                });
+            }
 
-            // Click handler for the item itself
-            itemDiv.addEventListener('click', async (e) => {
-                e.stopPropagation();
+            const rect = searchInput.getBoundingClientRect();
+            searchResults.style.top = `${rect.bottom + window.scrollY}px`;
+            searchResults.style.left = `${rect.left + window.scrollX}px`;
+            searchResults.style.width = `${Math.max(rect.width, 300)}px`;
+            searchResults.classList.add('dropdown--visible');
+        }, 300);
+    }
 
-                if (item.is_folder) {
-                    // For folders: expand/collapse instead of navigating
-                    const isExpanded = childrenDiv.classList.contains('hierarchy-children--expanded');
+    searchInput.addEventListener('input', performSearch);
 
-                    if (isExpanded) {
-                        childrenDiv.classList.remove('hierarchy-children--expanded');
-                        toggle.innerHTML = '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
-                        lucide.createIcons();
-                        expandedFolders.delete(item.id); // Track collapsed state
-                        saveExpandedState();
-                    } else {
-                        // Load children if not loaded yet
-                        if (childrenDiv.children.length === 0) {
-                            console.log('Loading children for:', item.id);
-                            const url = `${basePath}/api/node/${item.id}/children`;
-                            console.log('Fetching from:', url);
-                            const response = await fetch(url, {
-                                credentials: 'same-origin'
-                            });
-                            console.log('Response status:', response.status);
-                            if (response.ok) {
-                                const children = await response.json();
-                                console.log('Got children:', children);
-                                for (const child of children) {
-                                    await createHierarchyItem(child, childrenDiv, level + 1);
-                                }
-                            } else {
-                                console.error('Failed to load children:', response.status);
-                            }
-                        }
-                        childrenDiv.classList.add('hierarchy-children--expanded');
-                        toggle.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
-                        lucide.createIcons();
-                        expandedFolders.add(item.id); // Track expanded state
-                        saveExpandedState();
-                    }
-                } else {
-                    // For files: navigate to view
-                    window.location.href = `{{ url_for('view_node', node_id='') }}${item.id}`;
-                }
-            });
+    document.addEventListener('click', (e) => {
+        if (!searchResults.contains(e.target) && e.target !== searchInput) {
+            searchResults.classList.remove('dropdown--visible');
+        }
+    });
 
-            container.appendChild(itemDiv);
-            if (item.is_folder) {
-                container.appendChild(childrenDiv);
-
-                // Restore expanded state if this folder was previously expanded
-                if (expandedFolders.has(item.id)) {
-                    // Load children and expand
-                    const url = `${basePath}/api/node/${item.id}/children`;
-                    fetch(url, { credentials: 'same-origin' })
-                        .then(response => response.json())
-                        .then(children => {
-                            children.forEach(child => {
-                                createHierarchyItem(child, childrenDiv, level + 1);
-                            });
-                            childrenDiv.classList.add('hierarchy-children--expanded');
-                            toggle.innerHTML = '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>';
-                            lucide.createIcons();
-                        })
-                        .catch(error => console.error('Failed to restore expanded state:', error));
-                }
+    // Browser history
+    window.addEventListener('popstate', async (event) => {
+        if (event.state) {
+            if (event.state.isArticle) {
+                await openArticle(event.state.nodeId, false);
+            } else if (event.state.nodeId) {
+                closeArticle();
+                await navigateToFolder(event.state.nodeId, false);
             }
         }
+    });
 
-        // Set the view (grid, tree, or hierarchy)
-        async function setView(view, save = true) {
-            const previousView = currentView; // Save previous view before updating
-            currentView = view;
+    // Initial state
+    window.history.replaceState({ nodeId: CURRENT_NODE_ID, path: CURRENT_PATH }, document.title, window.location.href);
+    navigationHistory.push({ nodeId: CURRENT_NODE_ID, path: CURRENT_PATH });
+    historyIndex = 0;
 
-            // Remove all view classes
-            fileBrowserElement.classList.remove('file-browser--tree', 'file-browser--hierarchy');
+    // Initialize
+    attachFileItemHandlers();
+    initSidebar();
+    loadViewPreference();
+    lucide.createIcons();
 
-            // Remove active from all buttons
-            viewGridBtn.classList.remove('view-switcher__button--active');
-            viewTreeBtn.classList.remove('view-switcher__button--active');
-            viewHierarchyBtn.classList.remove('view-switcher__button--active');
-
-            if (view === 'grid') {
-                // Restore original HTML if coming from hierarchy
-                if (previousView === 'hierarchy') {
-                    fileBrowserElement.innerHTML = originalHTML;
-                    attachFileItemHandlers(); // Re-attach click handlers
-                }
-                viewGridBtn.classList.add('view-switcher__button--active');
-            } else if (view === 'tree') {
-                // Restore original HTML if coming from hierarchy
-                if (previousView === 'hierarchy') {
-                    fileBrowserElement.innerHTML = originalHTML;
-                    attachFileItemHandlers(); // Re-attach click handlers
-                }
-                fileBrowserElement.classList.add('file-browser--tree');
-                viewTreeBtn.classList.add('view-switcher__button--active');
-            } else if (view === 'hierarchy') {
-                fileBrowserElement.classList.add('file-browser--hierarchy');
-                viewHierarchyBtn.classList.add('view-switcher__button--active');
-                await buildHierarchyView();
-                lucide.createIcons(); // Initialize icons in hierarchy view
-            }
-
-            // Make visible after view is set
-            fileBrowserElement.style.opacity = '1';
-
-            if (save) {
-                saveViewPreference(view);
-            }
-        }
-
-        // View switcher button handlers
-        viewGridBtn.addEventListener('click', () => setView('grid'));
-        viewTreeBtn.addEventListener('click', () => setView('tree'));
-        viewHierarchyBtn.addEventListener('click', () => setView('hierarchy'));
-
-        // Load preference on page load
-        loadViewPreference();
+    // Auto-open article if specified in URL (for direct article links)
+    const OPEN_ARTICLE_ID = "{{ open_article_id }}";
+    if (OPEN_ARTICLE_ID) {
+        openArticle(OPEN_ARTICLE_ID);
+    }
 </script>
 {% endblock %}

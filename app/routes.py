@@ -12,23 +12,30 @@ from app.service_client import call_service
 import markdown
 import bleach
 
-# HTML sanitization settings for markdown content (prevents XSS)
+# HTML sanitization settings for editor content (prevents XSS)
 ALLOWED_TAGS = [
-    'p', 'br', 'strong', 'em', 'u', 'del', 'code', 'pre',
+    'p', 'br', 'strong', 'em', 'u', 's', 'del', 'i', 'b',
+    'code', 'pre', 'kbd', 'mark', 'sub', 'sup',
     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-    'ul', 'ol', 'li', 'blockquote', 'a', 'img',
-    'table', 'thead', 'tbody', 'tr', 'th', 'td',
-    'hr', 'span', 'div'
+    'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'figure', 'figcaption',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+    'hr', 'span', 'div', 'label', 'input'
 ]
 ALLOWED_ATTRIBUTES = {
-    'a': ['href', 'title', 'target'],
-    'img': ['src', 'alt', 'title', 'width', 'height'],
-    'code': ['class'],  # For syntax highlighting
-    'pre': ['class'],
-    'span': ['class'],
-    'div': ['class'],
-    'th': ['align'],
-    'td': ['align'],
+    'a': ['href', 'title', 'target', 'rel'],
+    'img': ['src', 'alt', 'title', 'width', 'height', 'style'],
+    'code': ['class'],
+    'pre': ['class', 'data-language'],
+    'span': ['class', 'style'],
+    'div': ['class', 'style'],
+    'p': ['style'],
+    'th': ['align', 'style', 'colspan', 'rowspan', 'scope'],
+    'td': ['align', 'style', 'colspan', 'rowspan'],
+    'table': ['class', 'style'],
+    'figure': ['class', 'style'],
+    'li': ['class'],  # For todo list items
+    'label': ['class'],
+    'input': ['type', 'checked', 'disabled'],  # For checkboxes in todo lists
 }
 
 # File upload security settings
@@ -121,18 +128,22 @@ def browse(path):
         path_result = session.run(path_query, node_id=node_id).single()
         breadcrumb_names = path_result['names'] if path_result else ["KnowledgeTree Root"]
 
+    # Check for article query parameter (for direct article links)
+    open_article_id = request.args.get('article', '')
+
     return render_template('index.html',
                            items=items,
                            breadcrumb_names=breadcrumb_names,
                            current_path=path,
                            current_node_id=node_id,
                            parent_path=parent_path,
+                           open_article_id=open_article_id,
                            user=g.user)
 
 @app.route('/view/<node_id>')
 @token_required
 def view_node(node_id):
-    """View a specific node."""
+    """Redirect to browse page with article parameter for inline viewing."""
     if g.is_service_call:
         return {'error': 'This endpoint is for users only'}, 403
 
@@ -141,6 +152,7 @@ def view_node(node_id):
         return error
 
     with driver.session() as session:
+        # Get the parent folder path for this node
         path_query = """
             MATCH p = shortestPath((:ContextItem {id: 'root'})-[:PARENT_OF*..]->(:ContextItem {id: $node_id}))
             RETURN [n IN nodes(p) | n.name] AS names
@@ -152,7 +164,8 @@ def view_node(node_id):
             parent_path_parts = result['names'][1:-1]
             parent_path = "/".join([quote(name) for name in parent_path_parts])
 
-    return render_template('view.html', node_id=node_id, parent_path=parent_path, user=g.user)
+    # Redirect to browse page with article query parameter
+    return redirect(url_for('browse', path=parent_path, article=node_id))
 
 @app.route('/uploads/<filename>')
 @token_required
@@ -404,18 +417,28 @@ def get_node(node_id):
             OPTIONAL MATCH (n)-[:HAS_FILE]->(f:File)
             RETURN n.id AS id, n.name AS name, n.content AS content, n.is_folder AS is_folder,
                    n.is_attached as is_attached, n.read_only as read_only,
+                   n.content_format as content_format,
                    collect({id: f.id, filename: f.filename}) AS files
         """, node_id=node_id).single()
 
         if result:
             data = dict(result)
             content = data.get('content') or ''
-            # Convert ~~strikethrough~~ to <del>strikethrough</del>
-            import re
-            content = re.sub(r'~~(.*?)~~', r'<del>\1</del>', content)
-            # Convert markdown to HTML and sanitize to prevent XSS
-            raw_html = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
-            data['content_html'] = bleach.clean(raw_html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
+            content_format = data.get('content_format') or 'markdown'
+
+            # If content is already HTML, just sanitize it
+            if content_format == 'html':
+                data['content_html'] = bleach.clean(content, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
+            else:
+                # Convert markdown to HTML for display
+                import re
+                markdown_content = content
+                content = re.sub(r'~~(.*?)~~', r'<del>\1</del>', content)
+                raw_html = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
+                data['content_html'] = bleach.clean(raw_html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
+                # Also return raw markdown for editing
+                data['content_markdown'] = markdown_content
+
             data['files'] = [f for f in data.get('files', []) if f['id'] is not None]
             return jsonify(data)
         else:
@@ -431,8 +454,15 @@ def update_node(node_id):
         return error
 
     with driver.session() as session:
-        if 'content' in data:
-            session.run("MATCH (n:ContextItem {id: $id}) SET n.content = $content",
+        # Handle HTML content from CKEditor (sanitize it first)
+        if 'content_html' in data:
+            sanitized_html = bleach.clean(data['content_html'], tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRIBUTES)
+            # Store the HTML directly in content field (no longer markdown)
+            session.run("MATCH (n:ContextItem {id: $id}) SET n.content = $content, n.content_format = 'html'",
+                        id=node_id, content=sanitized_html)
+        # Handle markdown content (legacy/API usage)
+        elif 'content' in data:
+            session.run("MATCH (n:ContextItem {id: $id}) SET n.content = $content, n.content_format = 'markdown'",
                         id=node_id, content=data['content'])
         if 'name' in data:
             session.run("MATCH (n:ContextItem {id: $id}) SET n.name = $name",
@@ -443,38 +473,46 @@ def update_node(node_id):
 @app.route('/api/folders/tree', methods=['GET'])
 @token_required
 def get_folder_tree():
-    """Get folder hierarchy as a tree structure."""
+    """Get folder hierarchy as a tree structure (optimized single query)."""
     driver, error = get_neo4j_driver()
     if error:
         return error
 
-    def build_tree(session, parent_id='root'):
-        """Recursively build folder tree."""
-        query = """
-            MATCH (:ContextItem {id: $parent_id})-[:PARENT_OF]->(child:ContextItem)
+    with driver.session() as session:
+        # Single query to get all folders with their parent relationships
+        result = session.run("""
+            MATCH (parent:ContextItem)-[:PARENT_OF]->(child:ContextItem)
             WHERE child.is_folder = true
-            RETURN child.id as id, child.name as name, child.is_attached as is_attached
+            RETURN parent.id as parent_id, child.id as id, child.name as name,
+                   child.is_attached as is_attached
             ORDER BY child.name
-        """
-        result = session.run(query, parent_id=parent_id)
-        children = []
+        """)
+
+        # Build lookup of children by parent_id
+        children_by_parent = {}
         for record in result:
-            node = {
+            parent_id = record['parent_id']
+            if parent_id not in children_by_parent:
+                children_by_parent[parent_id] = []
+            children_by_parent[parent_id].append({
                 'id': record['id'],
                 'name': record['name'],
                 'is_attached': record['is_attached'],
-                'children': build_tree(session, record['id'])
-            }
-            children.append(node)
-        return children
+                'children': []  # Will be populated below
+            })
 
-    with driver.session() as session:
-        # Get root node
+        # Recursively build tree from lookup (no additional queries)
+        def build_tree(parent_id):
+            children = children_by_parent.get(parent_id, [])
+            for child in children:
+                child['children'] = build_tree(child['id'])
+            return children
+
         root = {
             'id': 'root',
             'name': 'KnowledgeTree Root',
             'is_attached': False,
-            'children': build_tree(session, 'root')
+            'children': build_tree('root')
         }
 
     return jsonify(root)
@@ -497,6 +535,55 @@ def get_node_children(node_id):
 
         children = [dict(record) for record in result]
         return jsonify(children)
+
+@app.route('/api/node/<node_id>/browse', methods=['GET'])
+@token_required
+def api_browse_node(node_id):
+    """Get folder contents and breadcrumb for AJAX navigation."""
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
+    with driver.session() as session:
+        # Get folder info
+        node_result = session.run("""
+            MATCH (n:ContextItem {id: $node_id})
+            RETURN n.id as id, n.name as name, n.is_folder as is_folder
+        """, node_id=node_id).single()
+
+        if not node_result:
+            return jsonify({'error': 'Node not found'}), 404
+
+        if not node_result['is_folder']:
+            return jsonify({'error': 'Not a folder'}), 400
+
+        # Get children
+        children_result = session.run("""
+            MATCH (:ContextItem {id: $parent_id})-[:PARENT_OF]->(child:ContextItem)
+            RETURN child.id as id, child.name as name, child.is_folder as is_folder,
+                   child.is_attached as is_attached, child.read_only as read_only
+            ORDER BY child.is_folder DESC, child.name
+        """, parent_id=node_id)
+        children = [dict(record) for record in children_result]
+
+        # Get breadcrumb path
+        path_result = session.run("""
+            MATCH path = (:ContextItem {id: 'root'})-[:PARENT_OF*0..]->(:ContextItem {id: $node_id})
+            RETURN [n in nodes(path) | {id: n.id, name: n.name}] AS breadcrumb
+        """, node_id=node_id).single()
+
+        breadcrumb = path_result['breadcrumb'] if path_result else [{'id': 'root', 'name': 'KnowledgeTree Root'}]
+
+        # Build URL path from breadcrumb (excluding root)
+        url_path = '/'.join([quote(b['name']) for b in breadcrumb[1:]]) if len(breadcrumb) > 1 else ''
+
+        return jsonify({
+            'id': node_id,
+            'name': node_result['name'],
+            'children': children,
+            'breadcrumb': breadcrumb,
+            'url_path': url_path
+        })
 
 @app.route('/api/node/<node_id>/move', methods=['POST'])
 @token_required
