@@ -5,10 +5,20 @@ import sys
 import uuid
 from urllib.parse import unquote, quote
 from flask import render_template, request, jsonify, send_from_directory, send_file, redirect, g, current_app, url_for
+from werkzeug.utils import secure_filename
 from app import app, limiter
 from app.auth import token_required, admin_required
 from app.service_client import call_service
 import markdown
+
+# File upload security settings
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'md', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'json', 'xml'}
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Health check library
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -544,25 +554,58 @@ def upload_file_to_node(node_id):
         return jsonify({'error': 'No file part'}), 400
 
     file = request.files['file']
-    if file:
-        filename = file.filename
-        file_id = str(uuid.uuid4())
-        file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+    if not file or file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
 
-        driver, error = get_neo4j_driver()
-        if error:
-            return error
+    # Sanitize filename to prevent path traversal attacks
+    original_filename = secure_filename(file.filename)
+    if not original_filename:
+        return jsonify({'error': 'Invalid filename'}), 400
 
-        with driver.session() as session:
-            session.run("""
-                MATCH (n:ContextItem {id: $node_id})
-                CREATE (f:File {id: $file_id, filename: $filename})
-                CREATE (n)-[:HAS_FILE]->(f)
-            """, node_id=node_id, file_id=file_id, filename=filename)
+    # Validate file extension
+    if not allowed_file(original_filename):
+        return jsonify({'error': 'File type not allowed'}), 400
 
-        return jsonify({'success': True, 'filename': filename})
+    # Check file size (read content length or seek to end)
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset to beginning
+    if file_size > MAX_FILE_SIZE:
+        return jsonify({'error': f'File too large (max {MAX_FILE_SIZE // (1024*1024)}MB)'}), 413
 
-    return jsonify({'error': 'File upload failed'}), 500
+    # Verify node exists before uploading
+    driver, error = get_neo4j_driver()
+    if error:
+        return error
+
+    with driver.session() as session:
+        node_check = session.run(
+            "MATCH (n:ContextItem {id: $id}) RETURN n.id",
+            id=node_id
+        ).single()
+        if not node_check:
+            return jsonify({'error': 'Node not found'}), 404
+
+    # Use UUID-based filename to prevent any remaining traversal issues
+    file_id = str(uuid.uuid4())
+    file_ext = original_filename.rsplit('.', 1)[1].lower() if '.' in original_filename else ''
+    safe_filename = f"{file_id}.{file_ext}" if file_ext else file_id
+
+    try:
+        file.save(os.path.join(current_app.config['UPLOAD_FOLDER'], safe_filename))
+    except Exception as e:
+        current_app.logger.error(f"File save error: {e}")
+        return jsonify({'error': 'Failed to save file'}), 500
+
+    # Store file record in database with both safe and original filenames
+    with driver.session() as session:
+        session.run("""
+            MATCH (n:ContextItem {id: $node_id})
+            CREATE (f:File {id: $file_id, filename: $safe_filename, original_filename: $original_filename})
+            CREATE (n)-[:HAS_FILE]->(f)
+        """, node_id=node_id, file_id=file_id, safe_filename=safe_filename, original_filename=original_filename)
+
+    return jsonify({'success': True, 'filename': original_filename, 'file_id': file_id})
 
 @app.route('/api/context/tree/<node_id>', methods=['GET'])
 @token_required

@@ -8,6 +8,9 @@ load_dotenv('.flaskenv')
 
 app = Flask(__name__, instance_relative_config=True)
 
+# Set maximum content length for incoming requests (50MB for file uploads)
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
 # Configure logging level from environment
 import logging
 log_level = os.environ.get('LOG_LEVEL', 'INFO').upper()

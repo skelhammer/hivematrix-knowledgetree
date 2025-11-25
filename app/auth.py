@@ -60,7 +60,8 @@ def token_required(f):
                 g.is_service_call = False
 
         except jwt.PyJWTError as e:
-            abort(401, description=f"Invalid Token: {e}")
+            current_app.logger.warning(f"JWT validation failed: {e}")
+            abort(401, description="Invalid or expired token")
 
         return f(*args, **kwargs)
     return decorated_function
