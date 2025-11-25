@@ -51,11 +51,6 @@
         border-color: var(--color-border-medium) !important;
     }
 
-    /* Editor height */
-    .ck-editor__editable {
-        min-height: 500px;
-        max-height: calc(100vh - 400px);
-    }
 </style>
 {% endblock %}
 
@@ -558,6 +553,12 @@
         saveSidebarState();
         lucide.createIcons();
         highlightCurrentFolder();
+
+        // Scroll the target folder into view
+        const targetElement = document.querySelector(`.kt-tree-item[data-id="${folderId}"]`);
+        if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     // Check for unsaved changes
