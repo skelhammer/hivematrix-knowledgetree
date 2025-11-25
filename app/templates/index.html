@@ -16,21 +16,82 @@
         background: var(--color-bg-secondary) !important;
         border-color: var(--color-border-medium) !important;
     }
-    [data-theme="dark"] .ck.ck-button,
+    [data-theme="dark"] .ck.ck-button {
+        color: var(--color-text-primary) !important;
+    }
     [data-theme="dark"] .ck.ck-button:not(.ck-disabled):hover {
         color: var(--color-text-primary) !important;
+        background: var(--color-hover-bg) !important;
     }
     [data-theme="dark"] .ck.ck-button.ck-on {
         background: var(--color-primary) !important;
         color: white !important;
+    }
+    [data-theme="dark"] .ck.ck-button.ck-on:hover {
+        background: var(--color-primary-hover) !important;
+        color: white !important;
+    }
+    /* Fix split button dropdowns (like code block) */
+    [data-theme="dark"] .ck.ck-splitbutton .ck-splitbutton__arrow {
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-splitbutton .ck-splitbutton__arrow:hover {
+        background: var(--color-hover-bg) !important;
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-splitbutton:hover .ck-button {
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-splitbutton.ck-splitbutton_open .ck-button {
+        background: var(--color-hover-bg) !important;
+        color: var(--color-text-primary) !important;
     }
     [data-theme="dark"] .ck.ck-dropdown__panel,
     [data-theme="dark"] .ck.ck-list {
         background: var(--color-surface) !important;
         border-color: var(--color-border-medium) !important;
     }
+    [data-theme="dark"] .ck.ck-list__item .ck-button,
+    [data-theme="dark"] .ck.ck-list__item .ck-button .ck-button__label {
+        color: var(--color-text-primary) !important;
+    }
     [data-theme="dark"] .ck.ck-list__item .ck-button:hover {
         background: var(--color-hover-bg) !important;
+    }
+    [data-theme="dark"] .ck.ck-list__item .ck-button.ck-on,
+    [data-theme="dark"] .ck.ck-list__item .ck-button.ck-on .ck-button__label {
+        background: var(--color-primary) !important;
+        color: white !important;
+    }
+    [data-theme="dark"] .ck.ck-heading-dropdown .ck-list__item .ck-button .ck-button__label {
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-heading-dropdown .ck-list__item .ck-button.ck-on .ck-button__label {
+        color: white !important;
+    }
+    /* Fix all dropdown panels in dark mode */
+    [data-theme="dark"] .ck.ck-reset.ck-dropdown__panel,
+    [data-theme="dark"] .ck-dropdown__panel {
+        background: var(--color-surface) !important;
+        border-color: var(--color-border-medium) !important;
+    }
+    [data-theme="dark"] .ck-dropdown__panel .ck-list {
+        background: var(--color-surface) !important;
+    }
+    [data-theme="dark"] .ck-dropdown__panel .ck-button,
+    [data-theme="dark"] .ck-dropdown__panel .ck-button__label {
+        color: var(--color-text-primary) !important;
+        background: transparent !important;
+    }
+    [data-theme="dark"] .ck-dropdown__panel .ck-button:hover {
+        background: var(--color-hover-bg) !important;
+    }
+    [data-theme="dark"] .ck-dropdown__panel .ck-button.ck-on {
+        background: var(--color-primary) !important;
+        color: white !important;
+    }
+    [data-theme="dark"] .ck-dropdown__panel .ck-button.ck-on .ck-button__label {
+        color: white !important;
     }
     [data-theme="dark"] .ck-content pre {
         background: var(--color-bg-tertiary) !important;
@@ -964,6 +1025,12 @@
             },
             initialData: currentArticleData.content_html || ''
         });
+
+        // Set height on the editable element via CKEditor's API
+        articleEditor.editing.view.change(writer => {
+            writer.setStyle('height', (window.innerHeight - 420) + 'px', articleEditor.editing.view.document.getRoot());
+            writer.setStyle('overflow-y', 'auto', articleEditor.editing.view.document.getRoot());
+        });
     }
 
     function initMarkdownEditor() {
@@ -1030,6 +1097,9 @@
         }
 
         isEditingArticle = false;
+
+        // Show article display (reset both inline style AND class)
+        document.getElementById('article-display').style.display = '';
         document.getElementById('article-display').classList.remove('u-hidden');
         document.getElementById('article-editor').classList.add('u-hidden');
         document.getElementById('article-markdown-editor').classList.add('u-hidden');
@@ -1083,8 +1153,29 @@
             currentArticleData = updatedData;
             document.getElementById('article-display').innerHTML = updatedData.content_html || '<p class="u-text-secondary">No content.</p>';
 
-            // Exit edit mode
-            await cancelEditingArticle();
+            // Exit edit mode - set flag first to prevent unsaved changes prompt
+            isEditingArticle = false;
+
+            // Show article display (reset both inline style AND class)
+            document.getElementById('article-display').style.display = '';
+            document.getElementById('article-display').classList.remove('u-hidden');
+            document.getElementById('article-editor').classList.add('u-hidden');
+            document.getElementById('article-markdown-editor').classList.add('u-hidden');
+
+            // Update buttons
+            document.getElementById('btn-export-context').style.display = '';
+            document.getElementById('btn-edit-article').style.display = '';
+            document.getElementById('btn-mode-wysiwyg').style.display = 'none';
+            document.getElementById('btn-mode-markdown').style.display = 'none';
+            document.getElementById('btn-export-edit').style.display = 'none';
+            document.getElementById('btn-save-article').style.display = 'none';
+            document.getElementById('btn-cancel-edit').style.display = 'none';
+
+            // Destroy editor
+            if (articleEditor) {
+                await articleEditor.destroy();
+                articleEditor = null;
+            }
         } catch (error) {
             console.error('Error saving article:', error);
             alert('Failed to save article');
@@ -1288,6 +1379,11 @@
 
     // Context menu
     document.getElementById('file-browser-container').addEventListener('contextmenu', (e) => {
+        // Don't show custom context menu inside CKEditor or markdown editor
+        if (e.target.closest('.ck-editor') || e.target.closest('#article-markdown-editor')) {
+            return; // Let the default/CKEditor context menu show
+        }
+
         e.preventDefault();
         const targetItem = e.target.closest('.kt-file') || e.target.closest('.kt-tree-item');
 
