@@ -31,19 +31,35 @@
         background: var(--color-primary-hover) !important;
         color: white !important;
     }
-    /* Fix split button dropdowns (like code block) */
+    /* Fix split button dropdowns (like code block, merge cells) */
     [data-theme="dark"] .ck.ck-splitbutton .ck-splitbutton__arrow {
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-splitbutton .ck-splitbutton__arrow svg {
         color: var(--color-text-primary) !important;
     }
     [data-theme="dark"] .ck.ck-splitbutton .ck-splitbutton__arrow:hover {
         background: var(--color-hover-bg) !important;
         color: var(--color-text-primary) !important;
     }
-    [data-theme="dark"] .ck.ck-splitbutton:hover .ck-button {
+    [data-theme="dark"] .ck.ck-splitbutton:hover .ck-button,
+    [data-theme="dark"] .ck.ck-splitbutton:hover .ck-button .ck-icon {
         color: var(--color-text-primary) !important;
     }
-    [data-theme="dark"] .ck.ck-splitbutton.ck-splitbutton_open .ck-button {
+    [data-theme="dark"] .ck.ck-splitbutton.ck-splitbutton_open .ck-button,
+    [data-theme="dark"] .ck.ck-splitbutton.ck-splitbutton_open .ck-button .ck-icon {
         background: var(--color-hover-bg) !important;
+        color: var(--color-text-primary) !important;
+    }
+    /* Fix all dropdown buttons with arrows */
+    [data-theme="dark"] .ck.ck-dropdown .ck-button .ck-icon,
+    [data-theme="dark"] .ck.ck-dropdown .ck-button svg,
+    [data-theme="dark"] .ck.ck-dropdown .ck-dropdown__arrow {
+        color: var(--color-text-primary) !important;
+    }
+    [data-theme="dark"] .ck.ck-dropdown .ck-button:hover .ck-icon,
+    [data-theme="dark"] .ck.ck-dropdown .ck-button:hover svg,
+    [data-theme="dark"] .ck.ck-dropdown:hover .ck-dropdown__arrow {
         color: var(--color-text-primary) !important;
     }
     [data-theme="dark"] .ck.ck-dropdown__panel,
