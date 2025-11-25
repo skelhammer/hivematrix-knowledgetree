@@ -4,278 +4,6 @@
 
 {% block head %}
 <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/43.0.0/ckeditor5.css" />
-<style>
-    /* CKEditor dark mode support using CKEditor's native CSS variables */
-    [data-theme="dark"] .ck.ck-editor {
-        /* Base colors */
-        --ck-color-base-background: var(--color-surface);
-        --ck-color-base-foreground: var(--color-bg-secondary);
-        --ck-color-base-border: var(--color-border-medium);
-        --ck-color-base-text: var(--color-text-primary);
-
-        /* Focus/active states */
-        --ck-color-focus-border: var(--color-primary);
-        --ck-color-focus-outer-shadow: transparent;
-
-        /* Buttons */
-        --ck-color-button-default-background: transparent;
-        --ck-color-button-default-hover-background: var(--color-hover-bg);
-        --ck-color-button-default-active-background: var(--color-hover-bg);
-        --ck-color-button-on-background: var(--color-primary);
-        --ck-color-button-on-hover-background: var(--color-primary-hover);
-        --ck-color-button-on-active-background: var(--color-primary);
-        --ck-color-button-on-color: white;
-
-        /* Text and icons */
-        --ck-color-text: var(--color-text-primary);
-        --ck-color-icon: var(--color-text-primary);
-
-        /* Toolbar */
-        --ck-color-toolbar-background: var(--color-bg-secondary);
-        --ck-color-toolbar-border: var(--color-border-medium);
-
-        /* Panels and dropdowns */
-        --ck-color-panel-background: var(--color-surface);
-        --ck-color-panel-border: var(--color-border-medium);
-        --ck-color-dropdown-panel-background: var(--color-surface);
-        --ck-color-dropdown-panel-border: var(--color-border-medium);
-
-        /* List items (dropdowns) */
-        --ck-color-list-background: var(--color-surface);
-        --ck-color-list-button-hover-background: var(--color-hover-bg);
-        --ck-color-list-button-on-background: var(--color-primary);
-        --ck-color-list-button-on-background-focus: var(--color-primary-hover);
-        --ck-color-list-button-on-text: white;
-
-        /* Inputs */
-        --ck-color-input-background: var(--color-surface);
-        --ck-color-input-border: var(--color-border-medium);
-        --ck-color-input-text: var(--color-text-primary);
-        --ck-color-input-disabled-background: var(--color-bg-secondary);
-        --ck-color-input-disabled-border: var(--color-border-light);
-        --ck-color-input-disabled-text: var(--color-text-muted);
-
-        /* Labels */
-        --ck-color-labeled-field-label-background: var(--color-surface);
-
-        /* Tooltips */
-        --ck-color-tooltip-background: var(--color-bg-tertiary);
-        --ck-color-tooltip-text: var(--color-text-primary);
-
-        /* Shadows */
-        --ck-color-shadow-drop: rgba(0, 0, 0, 0.3);
-        --ck-color-shadow-inner: rgba(0, 0, 0, 0.2);
-
-        /* Split button */
-        --ck-color-split-button-hover-background: var(--color-hover-bg);
-        --ck-color-split-button-hover-border: var(--color-border-medium);
-    }
-
-    /* Editor content area */
-    [data-theme="dark"] .ck.ck-editor__main>.ck-editor__editable,
-    [data-theme="dark"] .ck.ck-editor__editable:not(.ck-editor__nested-editable) {
-        background: var(--color-surface);
-        color: var(--color-text-primary);
-        border-color: var(--color-border-medium);
-    }
-
-    /* Code blocks in content */
-    [data-theme="dark"] .ck-content pre {
-        background: var(--color-bg-tertiary);
-        color: var(--color-text-primary);
-    }
-    [data-theme="dark"] .ck-content code {
-        background: var(--color-bg-secondary);
-        color: var(--color-text-primary);
-    }
-
-    /* Balloon panels (link editor, table toolbar, etc.) - these appear outside .ck-editor */
-    [data-theme="dark"] .ck.ck-balloon-panel {
-        --ck-color-base-background: var(--color-surface);
-        --ck-color-base-foreground: var(--color-bg-secondary);
-        --ck-color-base-border: var(--color-border-medium);
-        --ck-color-base-text: var(--color-text-primary);
-        --ck-color-button-default-background: transparent;
-        --ck-color-button-default-hover-background: var(--color-hover-bg);
-        --ck-color-button-on-background: var(--color-primary);
-        --ck-color-button-on-color: white;
-        --ck-color-text: var(--color-text-primary);
-        --ck-color-icon: var(--color-text-primary);
-        --ck-color-panel-background: var(--color-surface);
-        --ck-color-panel-border: var(--color-border-medium);
-        --ck-color-dropdown-panel-background: var(--color-surface);
-        --ck-color-dropdown-panel-border: var(--color-border-medium);
-        --ck-color-input-background: var(--color-surface);
-        --ck-color-input-border: var(--color-border-medium);
-        --ck-color-input-text: var(--color-text-primary);
-        --ck-color-list-background: var(--color-surface);
-        --ck-color-list-button-hover-background: var(--color-hover-bg);
-        --ck-color-list-button-on-background: var(--color-primary);
-        --ck-color-list-button-on-text: white;
-        --ck-color-labeled-field-label-background: var(--color-surface);
-        --ck-color-toolbar-background: var(--color-surface);
-        --ck-color-toolbar-border: var(--color-border-medium);
-        background: var(--color-surface) !important;
-        border-color: var(--color-border-medium) !important;
-    }
-
-    /* Balloon panel toolbar (table toolbar) */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar {
-        background: var(--color-surface) !important;
-        border-color: var(--color-border-medium) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar .ck-button {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar .ck-button .ck-icon {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar .ck-button:hover {
-        background: var(--color-hover-bg) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar .ck-button:hover .ck-icon {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar .ck-button.ck-on {
-        background: var(--color-primary) !important;
-        color: white !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-toolbar .ck-dropdown__arrow {
-        color: var(--color-text-primary) !important;
-    }
-
-    /* Split buttons in balloon toolbar (merge cells, etc.) */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton .ck-button {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton .ck-button .ck-icon {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton .ck-button:hover {
-        background: var(--color-hover-bg) !important;
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton .ck-button:hover .ck-icon {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton:hover .ck-button {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton:hover .ck-button .ck-icon {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton__arrow {
-        color: var(--color-text-primary) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-splitbutton__arrow:hover {
-        background: var(--color-hover-bg) !important;
-    }
-
-    /* Balloon panel arrow/triangle */
-    [data-theme="dark"] .ck.ck-balloon-panel::before,
-    [data-theme="dark"] .ck.ck-balloon-panel::after {
-        border-bottom-color: var(--color-surface) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel[class*="arrow_n"]::before,
-    [data-theme="dark"] .ck.ck-balloon-panel[class*="arrow_n"]::after {
-        border-bottom-color: var(--color-surface) !important;
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel[class*="arrow_s"]::before,
-    [data-theme="dark"] .ck.ck-balloon-panel[class*="arrow_s"]::after {
-        border-top-color: var(--color-surface) !important;
-    }
-
-    /* Table properties form and dropdowns */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-form,
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-table-form,
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-table-properties-form,
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-table-cell-properties-form {
-        background: var(--color-surface);
-        color: var(--color-text-primary);
-    }
-
-    /* Form headers */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-form__header {
-        background: var(--color-bg-secondary);
-        border-bottom-color: var(--color-border-medium);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-form__header__label {
-        color: var(--color-text-primary);
-    }
-
-    /* Labels in forms */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-labeled-field-view .ck-label {
-        color: var(--color-text-secondary);
-        background: var(--color-surface);
-    }
-
-    /* Input fields */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-input {
-        background: var(--color-surface) !important;
-        border-color: var(--color-border-medium) !important;
-        color: var(--color-text-primary) !important;
-    }
-
-    /* Dropdowns inside balloon panels */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-dropdown__panel {
-        background: var(--color-surface);
-        border-color: var(--color-border-medium);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-list {
-        background: var(--color-surface);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-list__item .ck-button {
-        color: var(--color-text-primary);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-list__item .ck-button:hover {
-        background: var(--color-hover-bg);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-list__item .ck-button.ck-on {
-        background: var(--color-primary);
-        color: white;
-    }
-
-    /* Buttons in forms */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-button {
-        color: var(--color-text-primary);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-button:hover {
-        background: var(--color-hover-bg);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-button.ck-on {
-        background: var(--color-primary);
-        color: white;
-    }
-
-    /* Dropdown button text/arrows */
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-dropdown .ck-button .ck-button__label {
-        color: var(--color-text-primary);
-    }
-    [data-theme="dark"] .ck.ck-balloon-panel .ck-dropdown__arrow {
-        color: var(--color-text-primary);
-    }
-
-    /* Color picker grid */
-    [data-theme="dark"] .ck.ck-color-grid {
-        background: var(--color-surface);
-    }
-
-    /* Standalone dropdowns that appear outside balloon panels */
-    [data-theme="dark"] .ck-body-wrapper .ck-dropdown__panel {
-        background: var(--color-surface);
-        border-color: var(--color-border-medium);
-    }
-    [data-theme="dark"] .ck-body-wrapper .ck-list {
-        background: var(--color-surface);
-    }
-    [data-theme="dark"] .ck-body-wrapper .ck-list__item .ck-button {
-        color: var(--color-text-primary);
-    }
-    [data-theme="dark"] .ck-body-wrapper .ck-list__item .ck-button:hover {
-        background: var(--color-hover-bg);
-    }
-
-</style>
 {% endblock %}
 
 {% block content %}
@@ -284,7 +12,7 @@
         <h1 class="page-header__title">KnowledgeTree - Knowledge Base</h1>
     </div>
     <div class="page-header__actions">
-        <p class="page-header__description" style="margin: 0;">Documentation, procedures, and customer information</p>
+        <p class="page-header__description u-m-0">Documentation, procedures, and customer information</p>
     </div>
 </div>
 
@@ -293,15 +21,15 @@
     <div class="kt-pathbar">
         <div class="kt-pathbar__nav">
             <button class="kt-pathbar__btn" id="nav-back" title="Back" disabled>
-                <i data-lucide="chevron-left" style="width: 18px; height: 18px;"></i>
+                <i data-lucide="chevron-left" class="u-icon-lg"></i>
             </button>
             <button class="kt-pathbar__btn" id="nav-forward" title="Forward" disabled>
-                <i data-lucide="chevron-right" style="width: 18px; height: 18px;"></i>
+                <i data-lucide="chevron-right" class="u-icon-lg"></i>
             </button>
         </div>
         <div class="kt-pathbar__path" id="pathbar-breadcrumb">
             <a href="#" class="kt-pathbar__segment" data-node-id="root">
-                <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+                <i data-lucide="home" class="u-icon-sm"></i>
             </a>
             {% for name in breadcrumb_names[1:] %}
                 {% set path_slice = breadcrumb_names[1:loop.index+1] %}
@@ -311,13 +39,13 @@
         </div>
         <div class="kt-pathbar__actions">
             <div class="kt-search">
-                <i data-lucide="search" class="kt-search__icon" style="width: 16px; height: 16px;"></i>
+                <i data-lucide="search" class="kt-search__icon u-icon-md"></i>
                 <input type="search" id="search-input" placeholder="Search..." class="kt-search__input"
                        autocomplete="off" data-start-node="{{ current_node_id }}">
             </div>
             {% if user.permission_level == 'admin' %}
             <a href="{{ url_for('admin_settings') }}" class="btn" title="Admin Settings">
-                <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
+                <i data-lucide="settings" class="u-icon-md"></i>
             </a>
             {% endif %}
         </div>
@@ -335,10 +63,10 @@
             <!-- File browser view switcher -->
             <div class="view-switcher" id="view-switcher">
                 <button class="view-switcher__button view-switcher__button--active" id="view-grid" title="Grid view">
-                    <i data-lucide="grid-3x3" style="width: 18px; height: 18px;"></i>
+                    <i data-lucide="grid-3x3" class="u-icon-lg"></i>
                 </button>
                 <button class="view-switcher__button" id="view-list" title="List view">
-                    <i data-lucide="list" style="width: 18px; height: 18px;"></i>
+                    <i data-lucide="list" class="u-icon-lg"></i>
                 </button>
             </div>
             <!-- Article actions (hidden by default) -->
@@ -411,9 +139,9 @@
                      data-is-folder="{{ item.is_folder|lower }}">
                     <span class="kt-file__icon">
                         {% if item.is_folder %}
-                            {% if item.is_attached %}📎{% else %}📁{% endif %}
+                            {% if item.is_attached %}<i data-lucide="link"></i>{% else %}<i data-lucide="folder"></i>{% endif %}
                         {% else %}
-                            📄
+                            <i data-lucide="file-text"></i>
                         {% endif %}
                     </span>
                     <span class="kt-file__name">{{ item.name }}</span>
@@ -646,9 +374,9 @@
 
         item.innerHTML = `
             <span class="kt-tree-item__toggle ${hasChildren ? '' : 'kt-tree-item__toggle--empty'}">
-                ${hasChildren ? `<i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" style="width: 14px; height: 14px;"></i>` : ''}
+                ${hasChildren ? `<i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="u-icon-sm"></i>` : ''}
             </span>
-            <span class="kt-tree-item__icon">${node.is_attached ? '📎' : '📁'}</span>
+            <span class="kt-tree-item__icon"><i data-lucide="${node.is_attached ? 'link' : 'folder'}"></i></span>
             <span class="kt-tree-item__name">${node.name === 'KnowledgeTree Root' ? 'Root' : node.name}</span>
         `;
 
@@ -907,7 +635,7 @@
     function updatePathBar(breadcrumb) {
         const pathbar = document.getElementById('pathbar-breadcrumb');
         let html = `<a href="#" class="kt-pathbar__segment" data-node-id="root">
-            <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+            <i data-lucide="home" class="u-icon-sm"></i>
         </a>`;
 
         breadcrumb.slice(1).forEach((item, index) => {
@@ -940,11 +668,11 @@
             div.dataset.id = item.id;
             div.dataset.isFolder = item.is_folder;
 
-            let icon = '📄';
-            if (item.is_folder) icon = item.is_attached ? '📎' : '📁';
+            let iconName = 'file-text';
+            if (item.is_folder) iconName = item.is_attached ? 'link' : 'folder';
 
             div.innerHTML = `
-                <span class="kt-file__icon">${icon}</span>
+                <span class="kt-file__icon"><i data-lucide="${iconName}"></i></span>
                 <span class="kt-file__name">${item.name}</span>
             `;
 
@@ -952,6 +680,7 @@
         });
 
         attachFileItemHandlers();
+        lucide.createIcons();
     }
 
     function attachFileItemHandlers() {
@@ -1063,7 +792,7 @@
     function updatePathBarForArticle(articleName, articleId) {
         const pathbar = document.getElementById('pathbar-breadcrumb');
         let html = `<a href="#" class="kt-pathbar__segment" data-node-id="root">
-            <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+            <i data-lucide="home" class="u-icon-sm"></i>
         </a>`;
 
         CURRENT_BREADCRUMB.slice(1).forEach((item) => {
@@ -1194,6 +923,12 @@
             writer.setStyle('height', (window.innerHeight - 420) + 'px', articleEditor.editing.view.document.getRoot());
             writer.setStyle('overflow-y', 'auto', articleEditor.editing.view.document.getRoot());
         });
+
+        // Propagate dark mode to CKEditor's body wrapper for balloon panels
+        const theme = document.documentElement.getAttribute('data-theme');
+        if (theme === 'dark') {
+            document.body.classList.add('ck-dark-mode');
+        }
     }
 
     function initMarkdownEditor() {
@@ -1542,9 +1277,9 @@
 
     // Context menu
     document.getElementById('file-browser-container').addEventListener('contextmenu', (e) => {
-        // Don't show custom context menu inside CKEditor or markdown editor
-        if (e.target.closest('.ck-editor') || e.target.closest('#article-markdown-editor')) {
-            return; // Let the default/CKEditor context menu show
+        // Don't show custom context menu inside CKEditor, markdown editor, or article view
+        if (e.target.closest('.ck-editor') || e.target.closest('#article-markdown-editor') || e.target.closest('#article-display')) {
+            return; // Let the default browser context menu show
         }
 
         e.preventDefault();
@@ -1688,9 +1423,9 @@
 
         nodeDiv.innerHTML = `
             <span class="folder-tree__toggle">
-                ${hasChildren ? '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>' : ''}
+                ${hasChildren ? '<i data-lucide="chevron-right" class="u-icon-md"></i>' : ''}
             </span>
-            <span class="folder-tree__icon">${folder.is_attached ? '📎' : '📁'}</span>
+            <span class="folder-tree__icon"><i data-lucide="${folder.is_attached ? 'link' : 'folder'}"></i></span>
             <span class="folder-tree__name">${folder.name}</span>
         `;
 
@@ -1704,8 +1439,8 @@
                     const isCollapsed = childrenUl.classList.contains('folder-tree__children--collapsed');
                     childrenUl.classList.toggle('folder-tree__children--collapsed');
                     toggle.innerHTML = isCollapsed ?
-                        '<i data-lucide="chevron-down" style="width: 16px; height: 16px;"></i>' :
-                        '<i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>';
+                        '<i data-lucide="chevron-down" class="u-icon-md"></i>' :
+                        '<i data-lucide="chevron-right" class="u-icon-md"></i>';
                     lucide.createIcons();
                 }
                 return;
